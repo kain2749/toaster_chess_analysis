@@ -36,11 +36,11 @@ MATE_CP = 100000
 MAX_KEY_MOMENTS_WITH_BOARDS = 6
 BOARD_SIZE = 520
 
-USE_OLLAMA = os.getenv("TOASTER_USE_OLLAMA", "0") == "1"
+USE_OLLAMA = os.getenv("TOASTER_USE_OLLAMA", "1") != "0"
 OLLAMA_MODEL = os.getenv("TOASTER_OLLAMA_MODEL", "llama3.1:8b")
 OLLAMA_URL = os.getenv("TOASTER_OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
 OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "90"))
-OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "6"))
+OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "999999"))  # Kept for compatibility; default is effectively unlimited.
 
 LLM_CACHE_DIR = ANALYSIS_DIR / "llm_cache"
 
@@ -293,7 +293,7 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "prompt_version": "toaster_ollama_v1",
+        "prompt_version": "toaster_ollama_v2_one_sentence",
     }
 
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -301,14 +301,18 @@ def row_cache_key(row: dict) -> str:
 
 
 def ollama_prompt_for_row(row: dict) -> str:
-    return f"""You are writing a short chess note for a casual player reviewing a phone game.
+    return f"""You are writing ONE sentence of chess commentary for a casual player reviewing a phone game.
 
 Use Stockfish's verdict as truth. Do not disagree with the engine.
 Do not invent long forced lines.
-Do not use generic filler.
+Do not guess material facts.
+Do not call something a sacrifice unless the position clearly supports that.
 Do not say "official brilliant" or "Chess.com brilliant."
-Write 2-4 short bullet points only.
-Make it position-specific and useful on a phone.
+Do not use bullet points, markdown lists, headings, or preambles.
+Do not write "Here's a note" or anything like that.
+Write exactly one concise sentence, maximum 35 words.
+Make the sentence position-specific: mention the played move, the engine's preferred move if relevant, or the practical idea in the position.
+If unsure, say what Stockfish's eval says changed and keep it humble.
 
 Position before the move:
 FEN: {row["board_before"].fen()}
@@ -324,10 +328,10 @@ Eval after: {fmt_eval(row["eval_after"])}
 Stockfish preferred: {row["best"]}
 Centipawn loss: {row["loss_cp"]}
 
-Existing fallback explanation:
+Fallback explanation for context, not for copying:
 {row["reason"]}
 
-Write the note now.
+One sentence only.
 """
 
 
@@ -337,8 +341,8 @@ def call_ollama(prompt: str) -> str:
         "prompt": prompt,
         "stream": False,
         "options": {
-            "temperature": 0.25,
-            "num_predict": 180,
+            "temperature": 0.1,
+            "num_predict": 80,
         },
     }
 
@@ -355,10 +359,41 @@ def call_ollama(prompt: str) -> str:
     return data.get("response", "").strip()
 
 
+def clean_ollama_sentence(text: str) -> str:
+    text = text.strip()
+
+    # Models love ignoring instructions and returning bullets/preambles. Beat it into one sentence.
+    lines = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*•]+\s*", "", line)
+        line = re.sub(r"^\d+[.)]\s*", "", line)
+        if line.lower().startswith(("here's", "here is", "note:", "chess note:")):
+            continue
+        lines.append(line)
+
+    text = " ".join(lines).strip()
+    text = re.sub(r"\s+", " ", text)
+
+    # Keep first sentence-ish chunk.
+    m = re.search(r"(.+?[.!?])(?:\s|$)", text)
+    if m:
+        text = m.group(1).strip()
+
+    words = text.split()
+    if len(words) > 35:
+        text = " ".join(words[:35]).rstrip(",;:") + "."
+
+    return text or "Stockfish flags this as a position worth reviewing, but the local model did not produce a useful note."
+
+
 def ollama_explanation_for_row(row: dict, note_index: int) -> str:
     if not USE_OLLAMA:
         return row["reason"]
 
+    # OLLAMA_MAX_NOTES is kept as an emergency throttle only. Default is effectively unlimited.
     if note_index >= OLLAMA_MAX_NOTES:
         return row["reason"]
 
@@ -382,6 +417,7 @@ def ollama_explanation_for_row(row: dict, note_index: int) -> str:
     if not explanation:
         return row["reason"]
 
+    explanation = clean_ollama_sentence(explanation)
     cache_path.write_text(explanation + "\n", encoding="utf-8")
     return explanation
 
