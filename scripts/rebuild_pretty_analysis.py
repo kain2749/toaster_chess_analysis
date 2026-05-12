@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import io
 import re
 import shutil
@@ -9,11 +10,13 @@ from typing import Optional
 import chess
 import chess.engine
 import chess.pgn
+import chess.svg
 
 
 REPO = Path.home() / "repos" / "toaster_chess_analysis"
 RAW_DIR = REPO / "games" / "raw_pgn"
 ANALYSIS_DIR = REPO / "analysis"
+ASSET_DIR = ANALYSIS_DIR / "assets"
 INDEX = ANALYSIS_DIR / "index.md"
 
 DEPTH = 14
@@ -24,6 +27,9 @@ LOSS_MISTAKE = 300
 LOSS_BLUNDER = 600
 
 MATE_CP = 100000
+
+MAX_KEY_MOMENTS_WITH_BOARDS = 6
+BOARD_SIZE = 520
 
 
 def safe_slug(text: str) -> str:
@@ -48,14 +54,8 @@ def find_stockfish() -> str:
 
 def read_clean_pgn_text(path: Path) -> str:
     data = path.read_bytes()
-
-    # Android/app export garbage. Strip NUL padding.
     data = data.replace(b"\x00", b"")
-
-    text = data.decode("utf-8", errors="replace").strip()
-
-    # Normalize excessive blank space at end, preserve PGN structure.
-    return text
+    return data.decode("utf-8", errors="replace").strip()
 
 
 def parse_game(path: Path) -> chess.pgn.Game:
@@ -66,16 +66,6 @@ def parse_game(path: Path) -> chess.pgn.Game:
         raise RuntimeError(f"No PGN game found in {path}")
 
     return game
-
-
-def original_pgn_result_marker(path: Path) -> str:
-    text = read_clean_pgn_text(path)
-    # Grab last non-empty game text line.
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if not lines:
-        return ""
-
-    return lines[-1]
 
 
 def white_cp(score: chess.engine.PovScore) -> int:
@@ -97,8 +87,6 @@ def fmt_eval(cp: int) -> str:
 
 
 def mover_loss(eval_before: int, eval_after: int, mover_is_white: bool) -> int:
-    # White wants eval to rise.
-    # Black wants eval to fall.
     if mover_is_white:
         return eval_before - eval_after
     return eval_after - eval_before
@@ -123,12 +111,16 @@ def game_to_clean_pgn_text(game: chess.pgn.Game) -> str:
     return game.accept(exporter).strip()
 
 
-def report_filename(game: chess.pgn.Game, src: Path) -> str:
+def report_stem(game: chess.pgn.Game, src: Path) -> str:
     date = game.headers.get("Date", "unknown").replace(".", "-")
     white = safe_slug(game.headers.get("White", "white"))
     black = safe_slug(game.headers.get("Black", "black"))
     base = safe_slug(src.stem)
-    return f"{date}_{white}_vs_{black}_{base}.md"
+    return f"{date}_{white}_vs_{black}_{base}"
+
+
+def report_filename(game: chess.pgn.Game, src: Path) -> str:
+    return f"{report_stem(game, src)}.md"
 
 
 def classify_loss(loss_cp: int) -> str:
@@ -162,11 +154,8 @@ def label_emoji(label: str) -> str:
 def classify_move(
     board_before: chess.Board,
     move: chess.Move,
-    played_san: str,
     best_move: Optional[chess.Move],
     loss_cp: int,
-    eval_before: int,
-    eval_after: int,
     terminal: bool,
     ply: int,
 ) -> tuple[str, str]:
@@ -182,7 +171,6 @@ def classify_move(
             "Final move before the game ended. Treat this as resignation/adjudication territory.",
         )
 
-    # Crude book-ish phase. Real book labels require an opening database.
     if ply <= 6 and loss_cp < LOSS_INACCURACY:
         return (
             "Book",
@@ -213,8 +201,6 @@ def classify_move(
     is_capture = board_before.is_capture(move)
     is_best = best_move == move
 
-    # Fake-but-useful “brilliant-ish” detector.
-    # Near-best forcing move that does not damage eval.
     if loss_cp <= 30 and (is_check or is_capture) and is_best:
         return (
             "Brilliant-ish",
@@ -243,9 +229,53 @@ def side_from_bool(is_white: bool) -> str:
     return "White" if is_white else "Black"
 
 
+def board_asset_rel(path: Path) -> str:
+    return path.relative_to(ANALYSIS_DIR).as_posix()
+
+
+def write_board_svg(
+    board: chess.Board,
+    out_path: Path,
+    lastmove: Optional[chess.Move] = None,
+    best_move: Optional[chess.Move] = None,
+    flipped: bool = False,
+) -> None:
+    arrows = []
+
+    if best_move is not None:
+        arrows.append(chess.svg.Arrow(best_move.from_square, best_move.to_square, color="#cc0000"))
+
+    svg = chess.svg.board(
+        board=board,
+        size=BOARD_SIZE,
+        coordinates=True,
+        lastmove=lastmove,
+        arrows=arrows,
+        flipped=flipped,
+    )
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(svg, encoding="utf-8")
+
+
+def final_board_from_game(game: chess.pgn.Game) -> tuple[chess.Board, Optional[chess.Move]]:
+    board = game.board()
+    last_move = None
+
+    for move in game.mainline_moves():
+        board.push(move)
+        last_move = move
+
+    return board, last_move
+
+
 def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
     game = parse_game(pgn_path)
     board = game.board()
+
+    stem = report_stem(game, pgn_path)
+    out_path = ANALYSIS_DIR / f"{stem}.md"
+    game_asset_dir = ASSET_DIR / stem
 
     rows = []
     key_moments = []
@@ -271,30 +301,26 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
         best_san = san_or_unknown(before, best_move)
         eval_before = white_cp(best_info["score"])
 
-        board.push(move)
+        after = before.copy()
+        after.push(move)
+        terminal = after.is_game_over(claim_draw=True)
 
-        terminal = board.is_game_over(claim_draw=True)
-
-        if board.is_checkmate():
+        if after.is_checkmate():
             eval_after = MATE_CP if mover_is_white else -MATE_CP
             loss_cp = 0
         elif terminal:
-            # Don't ask Stockfish to make sense of a finished/adjudicated game.
             eval_after = eval_before
             loss_cp = 0
         else:
-            info_after = engine.analyse(board, chess.engine.Limit(depth=DEPTH))
+            info_after = engine.analyse(after, chess.engine.Limit(depth=DEPTH))
             eval_after = white_cp(info_after["score"])
             loss_cp = max(0, mover_loss(eval_before, eval_after, mover_is_white))
 
         label, reason = classify_move(
             board_before=before,
             move=move,
-            played_san=played_san,
             best_move=best_move,
             loss_cp=loss_cp,
-            eval_before=eval_before,
-            eval_after=eval_after,
             terminal=terminal,
             ply=ply,
         )
@@ -305,11 +331,17 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
             "side": side,
             "played": played_san,
             "best": best_san,
+            "best_move": best_move,
             "eval_before": eval_before,
             "eval_after": eval_after,
             "loss_cp": loss_cp,
             "label": label,
             "reason": reason,
+            "board_before": before,
+            "board_after": after,
+            "move": move,
+            "before_svg": None,
+            "after_svg": None,
         }
 
         rows.append(row)
@@ -323,8 +355,48 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
         }:
             key_moments.append(row)
 
-    out_path = ANALYSIS_DIR / report_filename(game, pgn_path)
-    write_report(game, pgn_path, out_path, rows, key_moments)
+        board.push(move)
+
+    # Board assets for key moments.
+    for row in key_moments[:MAX_KEY_MOMENTS_WITH_BOARDS]:
+        prefix = f"ply_{row['ply']:03d}_{safe_slug(row['played'])}"
+
+        before_svg = game_asset_dir / f"{prefix}_before.svg"
+        after_svg = game_asset_dir / f"{prefix}_after.svg"
+
+        write_board_svg(
+            row["board_before"],
+            before_svg,
+            lastmove=None,
+            best_move=row["best_move"],
+            flipped=False,
+        )
+
+        write_board_svg(
+            row["board_after"],
+            after_svg,
+            lastmove=row["move"],
+            best_move=None,
+            flipped=False,
+        )
+
+        row["before_svg"] = board_asset_rel(before_svg)
+        row["after_svg"] = board_asset_rel(after_svg)
+
+    # Final board asset.
+    final_board, final_lastmove = final_board_from_game(game)
+    final_svg = game_asset_dir / "final_position.svg"
+    write_board_svg(final_board, final_svg, lastmove=final_lastmove, best_move=None, flipped=False)
+
+    write_report(
+        game=game,
+        pgn_path=pgn_path,
+        out_path=out_path,
+        rows=rows,
+        key_moments=key_moments,
+        final_svg=board_asset_rel(final_svg),
+    )
+
     return out_path
 
 
@@ -334,6 +406,7 @@ def write_report(
     out_path: Path,
     rows: list[dict],
     key_moments: list[dict],
+    final_svg: str,
 ) -> None:
     headers = game.headers
     white = headers.get("White", "White")
@@ -395,6 +468,12 @@ def write_report(
         "",
         "---",
         "",
+        "## Final Position",
+        "",
+        f"![Final position]({final_svg})",
+        "",
+        "---",
+        "",
         "## Key Moments",
         "",
     ]
@@ -416,6 +495,22 @@ def write_report(
                 f"- **Loss:** {r['loss_cp']} cp",
                 "",
             ]
+
+            if r.get("before_svg"):
+                lines += [
+                    f"**Before {r['move_no']}. {r['played']}**",
+                    "",
+                    f"![Before {r['move_no']}. {r['played']}]({r['before_svg']})",
+                    "",
+                ]
+
+            if r.get("after_svg"):
+                lines += [
+                    f"**After {r['move_no']}. {r['played']}**",
+                    "",
+                    f"![After {r['move_no']}. {r['played']}]({r['after_svg']})",
+                    "",
+                ]
 
     lines += [
         "---",
@@ -535,8 +630,17 @@ def update_index() -> None:
     INDEX.write_text("\n".join(lines), encoding="utf-8")
 
 
+def remove_existing_assets_for_report(game: chess.pgn.Game, pgn_path: Path) -> None:
+    stem = report_stem(game, pgn_path)
+    asset_dir = ASSET_DIR / stem
+
+    if asset_dir.exists():
+        shutil.rmtree(asset_dir)
+
+
 def rebuild_all(force: bool = False) -> None:
     ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
+    ASSET_DIR.mkdir(parents=True, exist_ok=True)
 
     engine_path = find_stockfish()
     pgns = sorted(RAW_DIR.glob("*.pgn"))
@@ -559,6 +663,9 @@ def rebuild_all(force: bool = False) -> None:
                 skipped += 1
                 continue
 
+            if force:
+                remove_existing_assets_for_report(game, pgn)
+
             print(f"Analyzing {pgn.relative_to(REPO)}")
             out = analyze_game(engine, pgn)
             print(f"Wrote {out.relative_to(REPO)}")
@@ -569,8 +676,6 @@ def rebuild_all(force: bool = False) -> None:
 
 
 def main() -> None:
-    import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--force",
