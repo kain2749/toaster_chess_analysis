@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
 import argparse
+import hashlib
 import io
+import json
+import os
 import re
 import shutil
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Optional
 
@@ -30,6 +35,14 @@ MATE_CP = 100000
 
 MAX_KEY_MOMENTS_WITH_BOARDS = 6
 BOARD_SIZE = 520
+
+USE_OLLAMA = os.getenv("TOASTER_USE_OLLAMA", "0") == "1"
+OLLAMA_MODEL = os.getenv("TOASTER_OLLAMA_MODEL", "llama3.1:8b")
+OLLAMA_URL = os.getenv("TOASTER_OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
+OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "90"))
+OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "6"))
+
+LLM_CACHE_DIR = ANALYSIS_DIR / "llm_cache"
 
 
 def safe_slug(text: str) -> str:
@@ -269,6 +282,110 @@ def final_board_from_game(game: chess.pgn.Game) -> tuple[chess.Board, Optional[c
     return board, last_move
 
 
+def row_cache_key(row: dict) -> str:
+    payload = {
+        "model": OLLAMA_MODEL,
+        "fen": row["board_before"].fen(),
+        "side": row["side"],
+        "played": row["played"],
+        "best": row["best"],
+        "label": row["label"],
+        "eval_before": fmt_eval(row["eval_before"]),
+        "eval_after": fmt_eval(row["eval_after"]),
+        "loss_cp": row["loss_cp"],
+        "prompt_version": "toaster_ollama_v1",
+    }
+
+    blob = json.dumps(payload, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
+def ollama_prompt_for_row(row: dict) -> str:
+    return f"""You are writing a short chess note for a casual player reviewing a phone game.
+
+Use Stockfish's verdict as truth. Do not disagree with the engine.
+Do not invent long forced lines.
+Do not use generic filler.
+Do not say "official brilliant" or "Chess.com brilliant."
+Write 2-4 short bullet points only.
+Make it position-specific and useful on a phone.
+
+Position before the move:
+FEN: {row["board_before"].fen()}
+
+Move being reviewed:
+Side: {row["side"]}
+Played move: {row["played"]}
+Label: {row["label"]}
+
+Engine facts:
+Eval before: {fmt_eval(row["eval_before"])}
+Eval after: {fmt_eval(row["eval_after"])}
+Stockfish preferred: {row["best"]}
+Centipawn loss: {row["loss_cp"]}
+
+Existing fallback explanation:
+{row["reason"]}
+
+Write the note now.
+"""
+
+
+def call_ollama(prompt: str) -> str:
+    body = {
+        "model": OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.25,
+            "num_predict": 180,
+        },
+    }
+
+    req = urllib.request.Request(
+        OLLAMA_URL,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+
+    return data.get("response", "").strip()
+
+
+def ollama_explanation_for_row(row: dict, note_index: int) -> str:
+    if not USE_OLLAMA:
+        return row["reason"]
+
+    if note_index >= OLLAMA_MAX_NOTES:
+        return row["reason"]
+
+    LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    cache_key = row_cache_key(row)
+    cache_path = LLM_CACHE_DIR / f"{cache_key}.md"
+
+    if cache_path.exists():
+        cached = cache_path.read_text(encoding="utf-8").strip()
+        if cached:
+            return cached
+
+    prompt = ollama_prompt_for_row(row)
+
+    try:
+        explanation = call_ollama(prompt)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as e:
+        return f"{row['reason']}\n\n_Ollama note unavailable: `{type(e).__name__}`._"
+
+    if not explanation:
+        return row["reason"]
+
+    cache_path.write_text(explanation + "\n", encoding="utf-8")
+    return explanation
+
+
 def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
     game = parse_game(pgn_path)
     board = game.board()
@@ -484,11 +601,13 @@ def write_report(
             "",
         ]
     else:
-        for r in key_moments[:12]:
+        for note_index, r in enumerate(key_moments[:12]):
+            explanation = ollama_explanation_for_row(r, note_index)
+
             lines += [
                 f"### {label_emoji(r['label'])} {r['label']}: {r['move_no']}. {r['played']} by {r['side']}",
                 "",
-                r["reason"],
+                explanation,
                 "",
                 f"- **Eval:** {fmt_eval(r['eval_before'])} → {fmt_eval(r['eval_after'])}",
                 f"- **Preferred:** `{r['best']}`",
