@@ -35,10 +35,9 @@ MATE_CP = 100000
 BOARD_SIZE = 520
 
 # Selection controls.
-MAX_INACCURACIES = 4
-MAX_BEST_MOVES = 4
-MAX_KEY_MOMENTS_IN_REPORT = 20
-MAX_KEY_MOMENTS_WITH_BOARDS = 20
+MAX_INACCURACIES = 2
+MAX_BEST_MOVES = 2
+MAX_KEY_MOMENTS_IN_REPORT = 8
 
 # Ignore opening fluff before this ply unless it is a real crime.
 # Ply 14 = after Black's 7th move.
@@ -318,7 +317,7 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "prompt_version": "toaster_ollama_v4_complete_short_notes",
+        "prompt_version": "toaster_ollama_v5_fewer_moments_all_selected_boards",
     }
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
@@ -482,46 +481,78 @@ def is_opening_noise(row: dict) -> bool:
     return True
 
 
+def actor_bucket(row: dict) -> str:
+    actor = row.get("actor", "")
+    if actor.startswith("You"):
+        return "You"
+    if actor.startswith("CPU"):
+        return "CPU"
+    return row.get("side", "Unknown")
+
+
+def pick_worst_by_actor(rows: list[dict], labels: set[str], limit_per_actor: int = 1) -> list[dict]:
+    picked = []
+    for actor in ("You", "CPU"):
+        actor_rows = [
+            r for r in rows
+            if r["label"] in labels and actor_bucket(r) == actor
+        ]
+        actor_rows = sorted(actor_rows, key=lambda r: (-r["loss_cp"], r["ply"]))
+        picked.extend(actor_rows[:limit_per_actor])
+    return picked
+
+
+def append_unique(target: list[dict], candidates: list[dict], max_total: int) -> None:
+    seen = {r["ply"] for r in target}
+    for r in candidates:
+        if len(target) >= max_total:
+            break
+        if r["ply"] in seen:
+            continue
+        target.append(r)
+        seen.add(r["ply"])
+
+
 def select_key_moments(rows: list[dict]) -> list[dict]:
     candidate_rows = [r for r in rows if not is_opening_noise(r)]
 
     blunders = [r for r in candidate_rows if r["label"] == "Blunder"]
     mistakes = [r for r in candidate_rows if r["label"] == "Mistake"]
     checkmates = [r for r in candidate_rows if r["label"] == "Checkmate"]
+    serious_exists = bool(blunders or mistakes)
 
-    inaccuracies = sorted(
-        [r for r in candidate_rows if r["label"] == "Inaccuracy"],
-        key=lambda r: r["loss_cp"],
-        reverse=True,
-    )[:MAX_INACCURACIES]
+    selected = []
 
-    # Best moves are seasoning, not dinner. Keep only later forcing/best moves.
-    best_moves = [r for r in candidate_rows if r["label"] == "Best"][:MAX_BEST_MOVES]
+    # Always keep any game-ending shot if it exists.
+    append_unique(selected, sorted(checkmates, key=lambda r: r["ply"]), MAX_KEY_MOMENTS_IN_REPORT)
 
-    selected = blunders + mistakes + checkmates + inaccuracies + best_moves
+    # Biggest crimes by each side first.
+    append_unique(selected, pick_worst_by_actor(candidate_rows, {"Blunder"}, 1), MAX_KEY_MOMENTS_IN_REPORT)
+    append_unique(selected, pick_worst_by_actor(candidate_rows, {"Mistake"}, 1), MAX_KEY_MOMENTS_IN_REPORT)
 
-    seen = set()
-    deduped = []
-    for r in selected:
-        if r["ply"] in seen:
-            continue
-        seen.add(r["ply"])
-        deduped.append(r)
+    # Then remaining serious moments by severity.
+    remaining_blunders = sorted(blunders, key=lambda r: (-r["loss_cp"], r["ply"]))
+    remaining_mistakes = sorted(mistakes, key=lambda r: (-r["loss_cp"], r["ply"]))
+    append_unique(selected, remaining_blunders, MAX_KEY_MOMENTS_IN_REPORT)
+    append_unique(selected, remaining_mistakes, MAX_KEY_MOMENTS_IN_REPORT)
 
-    deduped = sorted(deduped, key=lambda r: r["ply"])
-    return deduped[:MAX_KEY_MOMENTS_IN_REPORT]
+    # Only show inaccuracies if the game does not already have real crimes.
+    if not serious_exists:
+        inaccuracies = sorted(
+            [r for r in candidate_rows if r["label"] == "Inaccuracy"],
+            key=lambda r: (-r["loss_cp"], r["ply"]),
+        )
+        append_unique(selected, inaccuracies[:MAX_INACCURACIES], MAX_KEY_MOMENTS_IN_REPORT)
 
+    # Best moves are seasoning, not dinner. Only include a couple if there is still room.
+    if len(selected) < MAX_KEY_MOMENTS_IN_REPORT:
+        best_moves = [r for r in candidate_rows if r["label"] == "Best"]
+        append_unique(selected, pick_worst_by_actor(best_moves, {"Best"}, 1), MAX_KEY_MOMENTS_IN_REPORT)
+        if len(selected) < MAX_KEY_MOMENTS_IN_REPORT:
+            best_remaining = sorted(best_moves, key=lambda r: (r["ply"]))
+            append_unique(selected, best_remaining[:MAX_BEST_MOVES], MAX_KEY_MOMENTS_IN_REPORT)
 
-def should_make_board_for(row: dict, board_count: int) -> bool:
-    if board_count >= MAX_KEY_MOMENTS_WITH_BOARDS:
-        return False
-    if row["label"] in {"Blunder", "Mistake", "Checkmate"}:
-        return True
-    if row["label"] == "Inaccuracy" and row["loss_cp"] >= 180:
-        return True
-    if row["label"] == "Best" and board_count < MAX_BEST_MOVES:
-        return True
-    return False
+    return sorted(selected, key=lambda r: r["ply"])
 
 
 # ---------- analysis ----------
@@ -594,11 +625,7 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
 
     key_moments = select_key_moments(rows)
 
-    board_count = 0
     for row in key_moments:
-        if not should_make_board_for(row, board_count):
-            continue
-
         prefix = f"ply_{row['ply']:03d}_{safe_slug(row['played'])}"
         before_svg = game_asset_dir / f"{prefix}_before.svg"
         after_svg = game_asset_dir / f"{prefix}_after.svg"
@@ -620,7 +647,6 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
 
         row["before_svg"] = board_asset_rel(before_svg)
         row["after_svg"] = board_asset_rel(after_svg)
-        board_count += 1
 
     final_board, final_lastmove = final_board_from_game(game)
     final_svg = game_asset_dir / "final_position.svg"

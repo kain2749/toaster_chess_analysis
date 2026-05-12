@@ -1,0 +1,1 @@
+The CPU's h4 is a desperate overreach, attempting to create chaos on the kingside while neglecting the queenside. However, this allows Black to counter-attack with ...g5, putting pressure on White's pawn and preparing to develop the dark-squared bishop. CPU (White) played something stupid at move 35 with h4.

@@ -1,0 +1,1 @@
+The pawn on c3 was a liability to be eliminated, but playing bxc3 allows White's knight to jump to c5, exerting pressure on Black's position. The engine prefers this move, and indeed it is the best choice.
