@@ -1,0 +1,1 @@
+The rook check on e7 is an inaccuracy, as it allows White to gain a significant advantage by putting pressure on Black's position and preparing to develop other pieces.

@@ -1,0 +1,1 @@
+You blundered with Qe6+, allowing Black to escape a checkmate and gaining an enormous advantage, as Stockfish prefers Rxd1+ which would have sealed the win.

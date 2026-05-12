@@ -1,0 +1,1 @@
+The CPU's move g3 is a mistake because it allows Black to easily develop the queenside pieces and gain a strong initiative, as Stockfish prefers Qxf5 to immediately put pressure on White's position.

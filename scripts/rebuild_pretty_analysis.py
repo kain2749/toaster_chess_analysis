@@ -23,6 +23,7 @@ RAW_DIR = REPO / "games" / "raw_pgn"
 ANALYSIS_DIR = REPO / "analysis"
 ASSET_DIR = ANALYSIS_DIR / "assets"
 INDEX = ANALYSIS_DIR / "index.md"
+LLM_CACHE_DIR = ANALYSIS_DIR / "llm_cache"
 
 DEPTH = 14
 MULTIPV = 3
@@ -30,20 +31,24 @@ MULTIPV = 3
 LOSS_INACCURACY = 120
 LOSS_MISTAKE = 300
 LOSS_BLUNDER = 600
-
 MATE_CP = 100000
-
-MAX_KEY_MOMENTS_WITH_BOARDS = 50
 BOARD_SIZE = 520
 
+# Show all truly bad stuff. Keep the fluff capped.
+MAX_INACCURACIES = 4
+MAX_BEST_MOVES = 4
+MAX_KEY_MOMENTS_IN_REPORT = 50
+MAX_KEY_MOMENTS_WITH_BOARDS = 50
+
+# Ollama defaults: on by default, disable with TOASTER_USE_OLLAMA=0
 USE_OLLAMA = os.getenv("TOASTER_USE_OLLAMA", "1") != "0"
 OLLAMA_MODEL = os.getenv("TOASTER_OLLAMA_MODEL", "llama3.1:8b")
 OLLAMA_URL = os.getenv("TOASTER_OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
 OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "90"))
-OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "999999"))  # Kept for compatibility; default is effectively unlimited.
+OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "9999"))
 
-LLM_CACHE_DIR = ANALYSIS_DIR / "llm_cache"
 
+# ---------- utility ----------
 
 def safe_slug(text: str) -> str:
     text = text.lower().strip()
@@ -57,37 +62,35 @@ def find_stockfish() -> str:
         found = shutil.which(candidate)
         if found:
             return found
-
         p = Path(candidate)
         if p.exists():
             return str(p)
-
     raise RuntimeError("Stockfish not found. Try: sudo apt install stockfish")
 
 
 def read_clean_pgn_text(path: Path) -> str:
-    data = path.read_bytes()
-    data = data.replace(b"\x00", b"")
+    data = path.read_bytes().replace(b"\x00", b"")
     return data.decode("utf-8", errors="replace").strip()
 
 
 def parse_game(path: Path) -> chess.pgn.Game:
     text = read_clean_pgn_text(path)
     game = chess.pgn.read_game(io.StringIO(text))
-
     if game is None:
         raise RuntimeError(f"No PGN game found in {path}")
-
     return game
+
+
+def game_to_clean_pgn_text(game: chess.pgn.Game) -> str:
+    exporter = chess.pgn.StringExporter(headers=True, variations=False, comments=False)
+    return game.accept(exporter).strip()
 
 
 def white_cp(score: chess.engine.PovScore) -> int:
     pov = score.white()
     mate = pov.mate()
-
     if mate is not None:
         return MATE_CP if mate > 0 else -MATE_CP
-
     return pov.score() or 0
 
 
@@ -100,6 +103,7 @@ def fmt_eval(cp: int) -> str:
 
 
 def mover_loss(eval_before: int, eval_after: int, mover_is_white: bool) -> int:
+    # White wants eval to rise. Black wants eval to fall.
     if mover_is_white:
         return eval_before - eval_after
     return eval_after - eval_before
@@ -108,20 +112,10 @@ def mover_loss(eval_before: int, eval_after: int, mover_is_white: bool) -> int:
 def san_or_unknown(board: chess.Board, move: Optional[chess.Move]) -> str:
     if move is None:
         return "unknown"
-
     try:
         return board.san(move)
     except Exception:
         return "unknown"
-
-
-def game_to_clean_pgn_text(game: chess.pgn.Game) -> str:
-    exporter = chess.pgn.StringExporter(
-        headers=True,
-        variations=False,
-        comments=False,
-    )
-    return game.accept(exporter).strip()
 
 
 def report_stem(game: chess.pgn.Game, src: Path) -> str:
@@ -135,6 +129,70 @@ def report_stem(game: chess.pgn.Game, src: Path) -> str:
 def report_filename(game: chess.pgn.Game, src: Path) -> str:
     return f"{report_stem(game, src)}.md"
 
+
+def board_asset_rel(path: Path) -> str:
+    return path.relative_to(ANALYSIS_DIR).as_posix()
+
+
+# ---------- identity / perspective ----------
+
+def side_from_bool(is_white: bool) -> str:
+    return "White" if is_white else "Black"
+
+
+def identify_player_roles(game: chess.pgn.Game) -> dict:
+    white_name = game.headers.get("White", "White")
+    black_name = game.headers.get("Black", "Black")
+
+    white_is_you = white_name.strip().lower() == "you"
+    black_is_you = black_name.strip().lower() == "you"
+
+    if white_is_you:
+        you_side = "White"
+        cpu_side = "Black"
+        you_name = white_name
+        cpu_name = black_name
+    elif black_is_you:
+        you_side = "Black"
+        cpu_side = "White"
+        you_name = black_name
+        cpu_name = white_name
+    else:
+        you_side = None
+        cpu_side = None
+        you_name = None
+        cpu_name = None
+
+    return {
+        "white_name": white_name,
+        "black_name": black_name,
+        "white_is_you": white_is_you,
+        "black_is_you": black_is_you,
+        "you_side": you_side,
+        "cpu_side": cpu_side,
+        "you_name": you_name,
+        "cpu_name": cpu_name,
+        "flipped": black_is_you,
+    }
+
+
+def actor_label(side: str, roles: dict) -> str:
+    if roles["you_side"] == side:
+        return f"You ({side})"
+    if roles["cpu_side"] == side:
+        return f"CPU ({side})"
+    return side
+
+
+def matchup_title(roles: dict) -> str:
+    if roles["you_side"] == "White":
+        return f"You (White) vs CPU (Black)"
+    if roles["you_side"] == "Black":
+        return f"You (Black) vs CPU (White)"
+    return f"{roles['white_name']} vs {roles['black_name']}"
+
+
+# ---------- move labels ----------
 
 def classify_loss(loss_cp: int) -> str:
     if loss_cp >= LOSS_BLUNDER:
@@ -154,7 +212,6 @@ def label_emoji(label: str) -> str:
     return {
         "Book": "📖",
         "Checkmate": "🏁",
-        "Brilliant-ish": "💎",
         "Best": "✅",
         "Great": "🔥",
         "Good": "👍",
@@ -164,97 +221,44 @@ def label_emoji(label: str) -> str:
     }.get(label, "•")
 
 
-def classify_move(
-    board_before: chess.Board,
-    move: chess.Move,
-    best_move: Optional[chess.Move],
-    loss_cp: int,
-    terminal: bool,
-    ply: int,
-) -> tuple[str, str]:
+def classify_move(board_before: chess.Board, move: chess.Move, best_move: Optional[chess.Move], loss_cp: int, terminal: bool, ply: int) -> tuple[str, str]:
     if terminal:
         if board_before.gives_check(move):
-            return (
-                "Checkmate",
-                "Game-ending forcing move. The toaster is not allowed to call a mating move a blunder.",
-            )
-
-        return (
-            "Good",
-            "Final move before the game ended. Treat this as resignation/adjudication territory.",
-        )
+            return "Checkmate", "Game-ending forcing move."
+        return "Good", "Final move before the game ended."
 
     if ply <= 6 and loss_cp < LOSS_INACCURACY:
-        return (
-            "Book",
-            "Early opening move. Not using a real book database yet, so this is only a soft label.",
-        )
+        return "Book", "Early opening move."
 
     label = classify_loss(loss_cp)
 
     if label == "Blunder":
-        return (
-            label,
-            "Major eval loss. Stockfish thinks this seriously changed the game.",
-        )
-
+        return label, "Major eval loss."
     if label == "Mistake":
-        return (
-            label,
-            "Significant eval loss. Probably missed a tactic, defense, or forcing move.",
-        )
-
+        return label, "Significant eval loss."
     if label == "Inaccuracy":
-        return (
-            label,
-            "Small-to-medium eval loss. Playable, but Stockfish wanted cleaner.",
-        )
+        return label, "Smaller but real eval loss."
 
     is_check = board_before.gives_check(move)
     is_capture = board_before.is_capture(move)
     is_best = best_move == move
 
+    # No more "brilliant-ish" nonsense. Just call it Best.
     if loss_cp <= 30 and (is_check or is_capture) and is_best:
-        return (
-            "Brilliant-ish",
-            "Forcing move that Stockfish likes. Not official Chess.com magic, but tactically notable.",
-        )
+        return "Best", "Forcing engine-approved move."
 
     if label == "Best":
-        return (
-            label,
-            "At or very near Stockfish's preferred move.",
-        )
-
+        return label, "At or very near Stockfish's preferred move."
     if label == "Great":
-        return (
-            label,
-            "Very close to best. No practical complaint.",
-        )
+        return label, "Very close to best."
 
-    return (
-        "Good",
-        "Reasonable move. Some engine loss, but not enough to care much.",
-    )
+    return "Good", "Reasonable move."
 
 
-def side_from_bool(is_white: bool) -> str:
-    return "White" if is_white else "Black"
+# ---------- board generation ----------
 
-
-def board_asset_rel(path: Path) -> str:
-    return path.relative_to(ANALYSIS_DIR).as_posix()
-
-
-def write_board_svg(
-    board: chess.Board,
-    out_path: Path,
-    lastmove: Optional[chess.Move] = None,
-    best_move: Optional[chess.Move] = None,
-    flipped: bool = False,
-) -> None:
+def write_board_svg(board: chess.Board, out_path: Path, lastmove: Optional[chess.Move] = None, best_move: Optional[chess.Move] = None, flipped: bool = False) -> None:
     arrows = []
-
     if best_move is not None:
         arrows.append(chess.svg.Arrow(best_move.from_square, best_move.to_square, color="#cc0000"))
 
@@ -266,7 +270,6 @@ def write_board_svg(
         arrows=arrows,
         flipped=flipped,
     )
-
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(svg, encoding="utf-8")
 
@@ -274,18 +277,19 @@ def write_board_svg(
 def final_board_from_game(game: chess.pgn.Game) -> tuple[chess.Board, Optional[chess.Move]]:
     board = game.board()
     last_move = None
-
     for move in game.mainline_moves():
         board.push(move)
         last_move = move
-
     return board, last_move
 
+
+# ---------- ollama ----------
 
 def row_cache_key(row: dict) -> str:
     payload = {
         "model": OLLAMA_MODEL,
         "fen": row["board_before"].fen(),
+        "actor": row["actor"],
         "side": row["side"],
         "played": row["played"],
         "best": row["best"],
@@ -293,45 +297,53 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "prompt_version": "toaster_ollama_v2_one_sentence",
+        "prompt_version": "toaster_ollama_perspective_v2",
     }
-
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
 
 
-def ollama_prompt_for_row(row: dict) -> str:
-    return f"""You are writing ONE sentence of chess commentary for a casual player reviewing a phone game.
+def ollama_prompt_for_row(row: dict, roles: dict) -> str:
+    you_side = roles["you_side"] or "Unknown"
+    cpu_side = roles["cpu_side"] or "Unknown"
 
-Use Stockfish's verdict as truth. Do not disagree with the engine.
-Do not invent long forced lines.
-Do not guess material facts.
-Do not call something a sacrifice unless the position clearly supports that.
-Do not say "official brilliant" or "Chess.com brilliant."
-Do not use bullet points, markdown lists, headings, or preambles.
-Do not write "Here's a note" or anything like that.
-Write exactly one concise sentence, maximum 35 words.
-Make the sentence position-specific: mention the played move, the engine's preferred move if relevant, or the practical idea in the position.
-If unsure, say what Stockfish's eval says changed and keep it humble.
+    return f"""You are writing one short chess note for a casual player reviewing a phone game.
+
+Rules:
+- Use Stockfish's verdict as truth.
+- One sentence only.
+- No bullets.
+- No intro like 'Here's a note'.
+- Keep it blunt and simple.
+- Make it position-specific.
+- Do not invent sacrifices.
+- Do not guess hidden tactics you cannot justify from the engine facts.
+- If the move is Best, explain why it is practical or forcing.
+- If the move is bad, explain the obvious problem in plain English.
+- Ensure that your analysis is delivered as though you are a Christopher Hitchens. Don't get say like... Stockfish thinks this so the player did that. Give me some feeling! Also, while using the writing style of Christopher Hitchens, ensure that your sentence also conveys Taoism.
+
+Player info:
+- You are: {you_side}
+- Computer is: {cpu_side}
 
 Position before the move:
-FEN: {row["board_before"].fen()}
+FEN: {row['board_before'].fen()}
 
 Move being reviewed:
-Side: {row["side"]}
-Played move: {row["played"]}
-Label: {row["label"]}
+Actor: {row['actor']}
+Played move: {row['played']}
+Label: {row['label']}
 
 Engine facts:
-Eval before: {fmt_eval(row["eval_before"])}
-Eval after: {fmt_eval(row["eval_after"])}
-Stockfish preferred: {row["best"]}
-Centipawn loss: {row["loss_cp"]}
+Eval before: {fmt_eval(row['eval_before'])}
+Eval after: {fmt_eval(row['eval_after'])}
+Stockfish preferred: {row['best']}
+Centipawn loss: {row['loss_cp']}
 
-Fallback explanation for context, not for copying:
-{row["reason"]}
+Fallback explanation:
+{row['reason']}
 
-One sentence only.
+Write the sentence now.
 """
 
 
@@ -341,7 +353,7 @@ def call_ollama(prompt: str) -> str:
         "prompt": prompt,
         "stream": False,
         "options": {
-            "temperature": 0.1,
+            "temperature": 0.2,
             "num_predict": 80,
         },
     }
@@ -356,74 +368,83 @@ def call_ollama(prompt: str) -> str:
     with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT) as resp:
         data = json.loads(resp.read().decode("utf-8"))
 
-    return data.get("response", "").strip()
+    text = data.get("response", "").strip()
+    text = " ".join(text.split())
+    return text
 
 
-def clean_ollama_sentence(text: str) -> str:
-    text = text.strip()
-
-    # Models love ignoring instructions and returning bullets/preambles. Beat it into one sentence.
-    lines = []
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        line = re.sub(r"^[-*•]+\s*", "", line)
-        line = re.sub(r"^\d+[.)]\s*", "", line)
-        if line.lower().startswith(("here's", "here is", "note:", "chess note:")):
-            continue
-        lines.append(line)
-
-    text = " ".join(lines).strip()
-    text = re.sub(r"\s+", " ", text)
-
-    # Keep first sentence-ish chunk.
-    m = re.search(r"(.+?[.!?])(?:\s|$)", text)
-    if m:
-        text = m.group(1).strip()
-
-    words = text.split()
-    if len(words) > 35:
-        text = " ".join(words[:35]).rstrip(",;:") + "."
-
-    return text or "Stockfish flags this as a position worth reviewing, but the local model did not produce a useful note."
-
-
-def ollama_explanation_for_row(row: dict, note_index: int) -> str:
-    if not USE_OLLAMA:
-        return row["reason"]
-
-    # OLLAMA_MAX_NOTES is kept as an emergency throttle only. Default is effectively unlimited.
-    if note_index >= OLLAMA_MAX_NOTES:
+def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
+    if not USE_OLLAMA or note_index >= OLLAMA_MAX_NOTES:
         return row["reason"]
 
     LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
     cache_key = row_cache_key(row)
-    cache_path = LLM_CACHE_DIR / f"{cache_key}.md"
+    cache_path = LLM_CACHE_DIR / f"{cache_key}.txt"
 
     if cache_path.exists():
         cached = cache_path.read_text(encoding="utf-8").strip()
         if cached:
             return cached
 
-    prompt = ollama_prompt_for_row(row)
-
+    prompt = ollama_prompt_for_row(row, roles)
     try:
         explanation = call_ollama(prompt)
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as e:
-        return f"{row['reason']}\n\n_Ollama note unavailable: `{type(e).__name__}`._"
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return row["reason"]
 
     if not explanation:
         return row["reason"]
 
-    explanation = clean_ollama_sentence(explanation)
     cache_path.write_text(explanation + "\n", encoding="utf-8")
     return explanation
 
 
+# ---------- selection ----------
+
+def select_key_moments(rows: list[dict]) -> list[dict]:
+    blunders = [r for r in rows if r["label"] == "Blunder"]
+    mistakes = [r for r in rows if r["label"] == "Mistake"]
+    checkmates = [r for r in rows if r["label"] == "Checkmate"]
+
+    inaccuracies = sorted(
+        [r for r in rows if r["label"] == "Inaccuracy"],
+        key=lambda r: r["loss_cp"],
+        reverse=True,
+    )[:MAX_INACCURACIES]
+
+    best_moves = [r for r in rows if r["label"] == "Best"][:MAX_BEST_MOVES]
+
+    selected = blunders + mistakes + checkmates + inaccuracies + best_moves
+
+    seen = set()
+    deduped = []
+    for r in selected:
+        if r["ply"] in seen:
+            continue
+        seen.add(r["ply"])
+        deduped.append(r)
+
+    deduped = sorted(deduped, key=lambda r: r["ply"])
+    return deduped[:MAX_KEY_MOMENTS_IN_REPORT]
+
+
+def should_make_board_for(row: dict, board_count: int) -> bool:
+    if board_count >= MAX_KEY_MOMENTS_WITH_BOARDS:
+        return False
+    if row["label"] in {"Blunder", "Mistake", "Checkmate"}:
+        return True
+    if row["label"] == "Inaccuracy" and row["loss_cp"] >= 180:
+        return True
+    if row["label"] == "Best" and board_count < MAX_BEST_MOVES:
+        return True
+    return False
+
+
+# ---------- analysis ----------
+
 def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
     game = parse_game(pgn_path)
+    roles = identify_player_roles(game)
     board = game.board()
 
     stem = report_stem(game, pgn_path)
@@ -431,21 +452,15 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
     game_asset_dir = ASSET_DIR / stem
 
     rows = []
-    key_moments = []
 
     for ply, move in enumerate(game.mainline_moves(), start=1):
         before = board.copy()
         mover_is_white = before.turn == chess.WHITE
         side = side_from_bool(mover_is_white)
-
+        actor = actor_label(side, roles)
         played_san = before.san(move)
 
-        info_before = engine.analyse(
-            before,
-            chess.engine.Limit(depth=DEPTH),
-            multipv=MULTIPV,
-        )
-
+        info_before = engine.analyse(before, chess.engine.Limit(depth=DEPTH), multipv=MULTIPV)
         if isinstance(info_before, dict):
             info_before = [info_before]
 
@@ -469,19 +484,13 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
             eval_after = white_cp(info_after["score"])
             loss_cp = max(0, mover_loss(eval_before, eval_after, mover_is_white))
 
-        label, reason = classify_move(
-            board_before=before,
-            move=move,
-            best_move=best_move,
-            loss_cp=loss_cp,
-            terminal=terminal,
-            ply=ply,
-        )
+        label, reason = classify_move(before, move, best_move, loss_cp, terminal, ply)
 
         row = {
             "ply": ply,
             "move_no": before.fullmove_number,
             "side": side,
+            "actor": actor,
             "played": played_san,
             "best": best_san,
             "best_move": best_move,
@@ -496,24 +505,17 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
             "before_svg": None,
             "after_svg": None,
         }
-
         rows.append(row)
-
-        if label in {
-            "Checkmate",
-            "Brilliant-ish",
-            "Blunder",
-            "Mistake",
-            "Inaccuracy",
-        }:
-            key_moments.append(row)
-
         board.push(move)
 
-    # Board assets for key moments.
-    for row in key_moments[:MAX_KEY_MOMENTS_WITH_BOARDS]:
-        prefix = f"ply_{row['ply']:03d}_{safe_slug(row['played'])}"
+    key_moments = select_key_moments(rows)
 
+    board_count = 0
+    for row in key_moments:
+        if not should_make_board_for(row, board_count):
+            continue
+
+        prefix = f"ply_{row['ply']:03d}_{safe_slug(row['played'])}"
         before_svg = game_asset_dir / f"{prefix}_before.svg"
         after_svg = game_asset_dir / f"{prefix}_after.svg"
 
@@ -522,68 +524,85 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
             before_svg,
             lastmove=None,
             best_move=row["best_move"],
-            flipped=False,
+            flipped=roles["flipped"],
         )
-
         write_board_svg(
             row["board_after"],
             after_svg,
             lastmove=row["move"],
             best_move=None,
-            flipped=False,
+            flipped=roles["flipped"],
         )
 
         row["before_svg"] = board_asset_rel(before_svg)
         row["after_svg"] = board_asset_rel(after_svg)
+        board_count += 1
 
-    # Final board asset.
     final_board, final_lastmove = final_board_from_game(game)
     final_svg = game_asset_dir / "final_position.svg"
-    write_board_svg(final_board, final_svg, lastmove=final_lastmove, best_move=None, flipped=False)
+    write_board_svg(final_board, final_svg, lastmove=final_lastmove, best_move=None, flipped=roles["flipped"])
 
-    write_report(
-        game=game,
-        pgn_path=pgn_path,
-        out_path=out_path,
-        rows=rows,
-        key_moments=key_moments,
-        final_svg=board_asset_rel(final_svg),
-    )
-
+    write_report(game, roles, pgn_path, out_path, rows, key_moments, board_asset_rel(final_svg))
     return out_path
 
 
-def write_report(
-    game: chess.pgn.Game,
-    pgn_path: Path,
-    out_path: Path,
-    rows: list[dict],
-    key_moments: list[dict],
-    final_svg: str,
-) -> None:
+# ---------- report ----------
+
+def human_notes(rows: list[dict], roles: dict) -> str:
+    if not rows:
+        return "No moves found."
+
+    notes = []
+    blunders = [r for r in rows if r["label"] == "Blunder"]
+    mistakes = [r for r in rows if r["label"] == "Mistake"]
+    mates = [r for r in rows if r["label"] == "Checkmate"]
+
+    if blunders:
+        first = blunders[0]
+        notes.append(f"Biggest caveman lesson: {first['actor']} blew it with **{first['move_no']}. {first['played']}**.")
+    if mistakes:
+        first = mistakes[0]
+        notes.append(f"There was another real screw-up at **{first['move_no']}. {first['played']}** by **{first['actor']}**.")
+    if mates:
+        mate = mates[-1]
+        notes.append(f"The game-ending shot was **{mate['move_no']}. {mate['played']}** by **{mate['actor']}**.")
+    if not notes:
+        notes.append("Nothing dramatic happened; this one was mostly normal move trading.")
+
+    return "\n\n".join(notes)
+
+
+def write_report(game: chess.pgn.Game, roles: dict, pgn_path: Path, out_path: Path, rows: list[dict], key_moments: list[dict], final_svg: str) -> None:
     headers = game.headers
-    white = headers.get("White", "White")
-    black = headers.get("Black", "Black")
     result = headers.get("Result", "?")
     date = headers.get("Date", "unknown")
 
     blunders = [r for r in rows if r["label"] == "Blunder"]
     mistakes = [r for r in rows if r["label"] == "Mistake"]
     inaccuracies = [r for r in rows if r["label"] == "Inaccuracy"]
-    good_stuff = [r for r in rows if r["label"] in {"Best", "Great", "Brilliant-ish", "Checkmate"}]
+    bests = [r for r in rows if r["label"] == "Best"]
 
     worst = max(rows, key=lambda r: r["loss_cp"], default=None)
     final_row = rows[-1] if rows else None
 
     lines = []
-
     lines += [
-        f"# {white} vs {black}",
+        f"# {matchup_title(roles)}",
         "",
         f"**Result:** {result}  ",
         f"**Date:** {date}  ",
         f"**Source:** `{pgn_path.name}`  ",
-        f"**Engine:** Stockfish depth {DEPTH}",
+        f"**Engine:** Stockfish depth {DEPTH}  ",
+        f"**Your side:** {roles['you_side'] or 'Unknown'}  ",
+        f"**Computer side:** {roles['cpu_side'] or 'Unknown'}  ",
+        f"**Board perspective:** {'Your perspective' if roles['flipped'] else 'Standard White-at-bottom'}",
+        "",
+        "---",
+        "",
+        "## Who Is Who",
+        "",
+        f"- **You:** {roles['you_name'] or 'Unknown'} ({roles['you_side'] or 'Unknown'})",
+        f"- **Computer:** {roles['cpu_name'] or 'Unknown'} ({roles['cpu_side'] or 'Unknown'})",
         "",
         "---",
         "",
@@ -593,7 +612,7 @@ def write_report(
 
     if worst and worst["loss_cp"] >= LOSS_INACCURACY:
         lines += [
-            f"Biggest toaster scream: **{worst['move_no']}. {worst['played']}** by **{worst['side']}**.",
+            f"Biggest toaster scream: **{worst['move_no']}. {worst['played']}** by **{worst['actor']}**.",
             "",
             f"- **Label:** {label_emoji(worst['label'])} **{worst['label']}**",
             f"- **Eval:** {fmt_eval(worst['eval_before'])} → {fmt_eval(worst['eval_after'])}",
@@ -602,22 +621,16 @@ def write_report(
             "",
         ]
     else:
-        lines += [
-            "No giant tactical crime detected at this depth.",
-            "",
-        ]
+        lines += ["No giant tactical crime detected at this depth.", ""]
 
     if final_row:
-        lines += [
-            f"Final move recorded by parser: **{final_row['move_no']}. {final_row['played']}** by **{final_row['side']}**.",
-            "",
-        ]
+        lines += [f"Final move recorded: **{final_row['move_no']}. {final_row['played']}** by **{final_row['actor']}**.", ""]
 
     lines += [
         f"- 💀 Blunders: **{len(blunders)}**",
         f"- ❌ Mistakes: **{len(mistakes)}**",
         f"- ⚠️ Inaccuracies: **{len(inaccuracies)}**",
-        f"- ✅ Good / best / tactical moves: **{len(good_stuff)}**",
+        f"- ✅ Best moves called out: **{len(bests)}**",
         "",
         "---",
         "",
@@ -632,16 +645,12 @@ def write_report(
     ]
 
     if not key_moments:
-        lines += [
-            "Nothing crossed the highlight threshold. Either the game was clean, too short, or Stockfish did not find enough to yell about.",
-            "",
-        ]
+        lines += ["Nothing crossed the highlight threshold.", ""]
     else:
-        for note_index, r in enumerate(key_moments[:12]):
-            explanation = ollama_explanation_for_row(r, note_index)
-
+        for note_index, r in enumerate(key_moments):
+            explanation = ollama_explanation_for_row(r, roles, note_index)
             lines += [
-                f"### {label_emoji(r['label'])} {r['label']}: {r['move_no']}. {r['played']} by {r['side']}",
+                f"### {label_emoji(r['label'])} {r['label']}: {r['move_no']}. {r['played']} by {r['actor']}",
                 "",
                 explanation,
                 "",
@@ -658,7 +667,6 @@ def write_report(
                     f"![Before {r['move_no']}. {r['played']}]({r['before_svg']})",
                     "",
                 ]
-
             if r.get("after_svg"):
                 lines += [
                     f"**After {r['move_no']}. {r['played']}**",
@@ -672,7 +680,7 @@ def write_report(
         "",
         "## Human Notes",
         "",
-        human_notes(rows),
+        human_notes(rows, roles),
         "",
         "---",
         "",
@@ -682,12 +690,10 @@ def write_report(
     ]
 
     for r in rows:
-        lines += [
-            f"- {label_emoji(r['label'])} **{r['move_no']}. {r['played']}** "
-            f"({r['side']}, {r['label']}) — "
-            f"{fmt_eval(r['eval_before'])} → {fmt_eval(r['eval_after'])}, "
-            f"preferred `{r['best']}`, loss {r['loss_cp']} cp",
-        ]
+        lines.append(
+            f"- {label_emoji(r['label'])} **{r['move_no']}. {r['played']}** ({r['actor']}, {r['label']}) — "
+            f"{fmt_eval(r['eval_before'])} → {fmt_eval(r['eval_after'])}, preferred `{r['best']}`, loss {r['loss_cp']} cp"
+        )
 
     lines += [
         "",
@@ -698,15 +704,14 @@ def write_report(
         "<details>",
         "<summary>Raw engine table</summary>",
         "",
-        "| Ply | Move | Side | Played | Label | Eval Before | Eval After | Preferred | Loss |",
+        "| Ply | Move | Actor | Played | Label | Eval Before | Eval After | Preferred | Loss |",
         "|---:|---:|---|---|---|---:|---:|---|---:|",
     ]
 
     for r in rows:
         lines.append(
-            f"| {r['ply']} | {r['move_no']} | {r['side']} | {r['played']} | "
-            f"{r['label']} | {fmt_eval(r['eval_before'])} | {fmt_eval(r['eval_after'])} | "
-            f"{r['best']} | {r['loss_cp']} |"
+            f"| {r['ply']} | {r['move_no']} | {r['actor']} | {r['played']} | {r['label']} | "
+            f"{fmt_eval(r['eval_before'])} | {fmt_eval(r['eval_after'])} | {r['best']} | {r['loss_cp']} |"
         )
 
     lines += [
@@ -729,58 +734,17 @@ def write_report(
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def human_notes(rows: list[dict]) -> str:
-    if not rows:
-        return "No moves found."
-
-    notes = []
-
-    blunders = [r for r in rows if r["label"] == "Blunder"]
-    mistakes = [r for r in rows if r["label"] == "Mistake"]
-    mates = [r for r in rows if r["label"] == "Checkmate"]
-
-    if blunders:
-        first = blunders[0]
-        notes.append(
-            f"The first major collapse was **{first['move_no']}. {first['played']}** by **{first['side']}**. "
-            f"That is probably the main position to review."
-        )
-
-    if mistakes:
-        first = mistakes[0]
-        notes.append(
-            f"There was also a notable mistake at **{first['move_no']}. {first['played']}** by **{first['side']}**."
-        )
-
-    if mates:
-        mate = mates[-1]
-        notes.append(
-            f"The game-ending tactic was **{mate['move_no']}. {mate['played']}**."
-        )
-
-    if not notes:
-        notes.append(
-            "Nothing dramatic stood out. Review the compact move list if you want smaller engine complaints."
-        )
-
-    return "\n\n".join(notes)
-
+# ---------- rebuild ----------
 
 def update_index() -> None:
     reports = sorted(p for p in ANALYSIS_DIR.glob("*.md") if p.name != "index.md")
-
-    lines = [
-        "# Chess Analysis Index",
-        "",
-    ]
-
+    lines = ["# Chess Analysis Index", ""]
     if not reports:
         lines.append("No games analyzed yet.")
     else:
         for p in reports:
             title = p.stem.replace("_", " ")
             lines.append(f"- [{title}]({p.name})")
-
     lines.append("")
     INDEX.write_text("\n".join(lines), encoding="utf-8")
 
@@ -788,7 +752,6 @@ def update_index() -> None:
 def remove_existing_assets_for_report(game: chess.pgn.Game, pgn_path: Path) -> None:
     stem = report_stem(game, pgn_path)
     asset_dir = ASSET_DIR / stem
-
     if asset_dir.exists():
         shutil.rmtree(asset_dir)
 
@@ -796,6 +759,7 @@ def remove_existing_assets_for_report(game: chess.pgn.Game, pgn_path: Path) -> N
 def rebuild_all(force: bool = False) -> None:
     ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
+    LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     engine_path = find_stockfish()
     pgns = sorted(RAW_DIR.glob("*.pgn"))
@@ -832,13 +796,8 @@ def rebuild_all(force: bool = False) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Regenerate all reports even if analysis markdown already exists.",
-    )
+    parser.add_argument("--force", action="store_true", help="Regenerate all reports even if markdown already exists.")
     args = parser.parse_args()
-
     rebuild_all(force=args.force)
 
 

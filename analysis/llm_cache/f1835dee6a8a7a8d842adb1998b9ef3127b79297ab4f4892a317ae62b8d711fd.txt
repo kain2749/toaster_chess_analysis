@@ -1,0 +1,1 @@
+You played Bxf6, but Stockfish's verdict is that it's a mistake, losing 511 centipawns and reducing your advantage from +11.76 to +6.65.

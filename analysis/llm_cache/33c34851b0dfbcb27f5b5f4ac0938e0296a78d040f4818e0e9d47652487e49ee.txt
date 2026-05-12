@@ -1,0 +1,1 @@
+Black's Qb6 is an inaccuracy as it allows White to potentially develop the kingside pieces and puts pressure on the queenside, while Stockfish preferred Kf8 which would have maintained a stronger pawn structure.

@@ -1,0 +1,1 @@
+Playing a6 allows White to easily develop their queenside pieces and puts pressure on Black's position, while Stockfish suggests developing with e5 instead.

@@ -1,0 +1,1 @@
+Qd4 is an inaccuracy as it allows Black to develop their queenside pieces and gain a strong initiative, while Stockfish's preferred move f4 would have maintained a small advantage.

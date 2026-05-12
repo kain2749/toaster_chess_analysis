@@ -1,0 +1,1 @@
+Playing a5 allows White to control the queenside and puts pressure on Black's position, which Stockfish prefers to counter with the more solid Bg7.
