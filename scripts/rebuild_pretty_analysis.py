@@ -535,11 +535,8 @@ def update_index() -> None:
     INDEX.write_text("\n".join(lines), encoding="utf-8")
 
 
-def rebuild_all() -> None:
+def rebuild_all(force: bool = False) -> None:
     ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
-
-    for old in ANALYSIS_DIR.glob("*.md"):
-        old.unlink()
 
     engine_path = find_stockfish()
     pgns = sorted(RAW_DIR.glob("*.pgn"))
@@ -549,17 +546,40 @@ def rebuild_all() -> None:
         print(f"No PGNs found in {RAW_DIR}")
         return
 
+    analyzed = 0
+    skipped = 0
+
     with chess.engine.SimpleEngine.popen_uci(engine_path) as engine:
         for pgn in pgns:
+            game = parse_game(pgn)
+            out_path = ANALYSIS_DIR / report_filename(game, pgn)
+
+            if out_path.exists() and not force:
+                print(f"Skipping existing report: {out_path.relative_to(REPO)}")
+                skipped += 1
+                continue
+
             print(f"Analyzing {pgn.relative_to(REPO)}")
             out = analyze_game(engine, pgn)
             print(f"Wrote {out.relative_to(REPO)}")
+            analyzed += 1
 
     update_index()
+    print(f"Done. Analyzed {analyzed}, skipped {skipped}.")
 
 
 def main() -> None:
-    rebuild_all()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Regenerate all reports even if analysis markdown already exists.",
+    )
+    args = parser.parse_args()
+
+    rebuild_all(force=args.force)
 
 
 if __name__ == "__main__":
