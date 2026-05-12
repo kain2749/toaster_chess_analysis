@@ -328,6 +328,10 @@ Rules:
 - Never write generic filler like 'putting pressure' unless you name what piece/square is under pressure.
 - Very rarely, only if it fits naturally and does not obscure the chess point, you may include a short "yo momma" joke.
 - Never let the joke replace the actual chess explanation.
+- Keep the note under 500 characters, maximum.
+- Aim closer to 80–180 characters when possible.
+- End with a complete sentence.
+- Do not trail off.
 
 Player info:
 - You are: {you_side}
@@ -364,7 +368,7 @@ def call_ollama(prompt: str) -> str:
         "stream": False,
         "options": {
             "temperature": 0.2,
-            "num_predict": 80,
+            "num_predict": 500,
         },
     }
 
