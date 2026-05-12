@@ -1,0 +1,1 @@
+The CPU's impatience is its downfall. Playing Kb8 allows White to launch a swift counterattack on the queenside, while also exposing Black's king to potential threats. The engine prefers a5, which would have maintained balance and forced White to adapt. Instead, Black overreaches with Kb8, inviting disaster.
