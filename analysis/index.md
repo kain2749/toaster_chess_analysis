@@ -1,3 +1,3 @@
 # Chess Analysis Index
 
-No games analyzed yet.
+- [2026-05-12 you vs cpu 5 20260512 120223 pgn 2026 05 12 12h01 501ced3b871f](2026-05-12_you_vs_cpu_5_20260512_120223_pgn_2026_05_12_12h01_501ced3b871f.md)
