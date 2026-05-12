@@ -1,0 +1,1 @@
+The CPU's Qb6 is a premature overextension of Black's queenside pieces, allowing White to potentially exploit the weakened kingside with a future f4 push. The engine prefers Kf8, which would have maintained balance and kept options open.

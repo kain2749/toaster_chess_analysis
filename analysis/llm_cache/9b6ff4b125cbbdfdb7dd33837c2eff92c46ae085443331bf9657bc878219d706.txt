@@ -1,0 +1,1 @@
+The CPU's impatience is its downfall. Playing f3 allows White to overextend its pawn on e4, creating a weakness that Black can exploit. The engine prefers f5, which would have maintained balance and prepared for potential counterplay. Instead, this blunder sets the stage for Black's comeback. Black should seize the initiative now.

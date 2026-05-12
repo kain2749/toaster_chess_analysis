@@ -1,0 +1,1 @@
+The inevitable. Rh1# is a checkmate, but it's also an admission of defeat. The position was already won for Black; White's king was trapped and there were no counterplay threats. The only reason to play this move is to hasten the endgame, which Stockfish has been patiently waiting for.

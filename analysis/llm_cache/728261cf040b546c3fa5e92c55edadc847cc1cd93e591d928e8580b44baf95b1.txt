@@ -1,0 +1,1 @@
+The CPU's Qa5 is a curious choice, as it allows Black to respond with ...Qc7, pinning White's queen and disrupting their queenside expansion. The engine prefers this move, but one wonders if patience would have been a better virtue - perhaps letting the position unfold without overreaching.

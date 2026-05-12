@@ -1,0 +1,1 @@
+The CPU's Nf6 on move 20 is a mistake. It overextends the knight, creating a weakness on f6 and allowing White to potentially exploit it later. The more prudent choice would have been to develop other pieces first. The position punishes itself for such haste.

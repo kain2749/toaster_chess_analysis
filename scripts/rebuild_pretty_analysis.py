@@ -34,19 +34,25 @@ LOSS_BLUNDER = 600
 MATE_CP = 100000
 BOARD_SIZE = 520
 
-# Show all truly bad stuff. Keep the fluff capped.
+# Selection controls.
 MAX_INACCURACIES = 4
 MAX_BEST_MOVES = 4
-MAX_KEY_MOMENTS_IN_REPORT = 18
-MAX_KEY_MOMENTS_WITH_BOARDS = 10
-IGNORE_KEY_MOMENTS_BEFORE_PLY = 14  # first 7 full moves; ignore opening fluff unless it is a real crime
+MAX_KEY_MOMENTS_IN_REPORT = 20
+MAX_KEY_MOMENTS_WITH_BOARDS = 20
 
-# Ollama defaults: on by default, disable with TOASTER_USE_OLLAMA=0
+# Ignore opening fluff before this ply unless it is a real crime.
+# Ply 14 = after Black's 7th move.
+IGNORE_KEY_MOMENTS_BEFORE_PLY = 14
+
+# Ollama defaults:
+# - on by default
+# - disable with TOASTER_USE_OLLAMA=0
 USE_OLLAMA = os.getenv("TOASTER_USE_OLLAMA", "1") != "0"
 OLLAMA_MODEL = os.getenv("TOASTER_OLLAMA_MODEL", "llama3.1:8b")
 OLLAMA_URL = os.getenv("TOASTER_OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
-OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "90"))
+OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "120"))
 OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "9999"))
+OLLAMA_NUM_PREDICT = int(os.getenv("TOASTER_OLLAMA_NUM_PREDICT", "320"))
 
 
 # ---------- utility ----------
@@ -173,6 +179,7 @@ def identify_player_roles(game: chess.pgn.Game) -> dict:
         "cpu_side": cpu_side,
         "you_name": you_name,
         "cpu_name": cpu_name,
+        # If you are Black, render boards from your side.
         "flipped": black_is_you,
     }
 
@@ -187,9 +194,9 @@ def actor_label(side: str, roles: dict) -> str:
 
 def matchup_title(roles: dict) -> str:
     if roles["you_side"] == "White":
-        return f"You (White) vs CPU (Black)"
+        return "You (White) vs CPU (Black)"
     if roles["you_side"] == "Black":
-        return f"You (Black) vs CPU (White)"
+        return "You (Black) vs CPU (White)"
     return f"{roles['white_name']} vs {roles['black_name']}"
 
 
@@ -222,7 +229,14 @@ def label_emoji(label: str) -> str:
     }.get(label, "•")
 
 
-def classify_move(board_before: chess.Board, move: chess.Move, best_move: Optional[chess.Move], loss_cp: int, terminal: bool, ply: int) -> tuple[str, str]:
+def classify_move(
+    board_before: chess.Board,
+    move: chess.Move,
+    best_move: Optional[chess.Move],
+    loss_cp: int,
+    terminal: bool,
+    ply: int,
+) -> tuple[str, str]:
     if terminal:
         if board_before.gives_check(move):
             return "Checkmate", "Game-ending forcing move."
@@ -258,7 +272,13 @@ def classify_move(board_before: chess.Board, move: chess.Move, best_move: Option
 
 # ---------- board generation ----------
 
-def write_board_svg(board: chess.Board, out_path: Path, lastmove: Optional[chess.Move] = None, best_move: Optional[chess.Move] = None, flipped: bool = False) -> None:
+def write_board_svg(
+    board: chess.Board,
+    out_path: Path,
+    lastmove: Optional[chess.Move] = None,
+    best_move: Optional[chess.Move] = None,
+    flipped: bool = False,
+) -> None:
     arrows = []
     if best_move is not None:
         arrows.append(chess.svg.Arrow(best_move.from_square, best_move.to_square, color="#cc0000"))
@@ -298,7 +318,7 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "prompt_version": "toaster_ollama_perspective_v3_hitchens_tao_openingfilter",
+        "prompt_version": "toaster_ollama_v4_complete_short_notes",
     }
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
@@ -308,13 +328,18 @@ def ollama_prompt_for_row(row: dict, roles: dict) -> str:
     you_side = roles["you_side"] or "Unknown"
     cpu_side = roles["cpu_side"] or "Unknown"
 
-    return f"""You are writing one short chess note for a casual player reviewing a phone game.
+    return f"""You are writing a short chess note for a casual player reviewing a phone game.
 
 Rules:
 - Use Stockfish's verdict as truth.
 - No bullets.
-- No intro like 'Here's a note'.
+- No intro like "Here's a note".
 - Keep it blunt, sharp, and position-specific.
+- Keep the note under 500 characters.
+- Aim for 80-220 characters.
+- End with a complete sentence.
+- Do not trail off.
+- Do not write an essay.
 - Name the pieces and squares involved in the maneuver.
 - Do not invent sacrifices.
 - Do not guess hidden tactics you cannot justify from the engine facts.
@@ -322,16 +347,10 @@ Rules:
 - If the move is bad, explain the obvious problem in plain English.
 - Add a faint Taoist vibe only if it fits naturally: force, balance, overreach, patience, or letting the position punish itself.
 - Sound like a dry, literate critic judging bad chess at 2 AM, somewhat like Christopher Hitchens, but do not write purple prose.
-- If the tactical sequence needs more than one sentence, use more than one sentence, but do not ramble.
-- Never say 'centipawns' in the prose note.
-- Never say 'Stockfish thinks' in the prose note.
-- Never write generic filler like 'putting pressure' unless you name what piece/square is under pressure.
-- Very rarely, only if it fits naturally and does not obscure the chess point, you may include a short "yo momma" joke.
-- Never let the joke replace the actual chess explanation.
-- Keep the note under 500 characters, maximum.
-- Aim closer to 80–180 characters when possible.
-- End with a complete sentence.
-- Do not trail off.
+- Never say "centipawns" in the prose note.
+- Never say "Stockfish thinks" in the prose note.
+- Never mention numeric eval scores or loss points in the prose note.
+- Never write generic filler like "putting pressure" unless you name what piece or square is under pressure.
 
 Player info:
 - You are: {you_side}
@@ -361,6 +380,40 @@ Write the note now.
 """
 
 
+def clean_llm_note(text: str) -> str:
+    text = " ".join(text.split()).strip()
+
+    if not text:
+        return text
+
+    # Kill common dumb intros.
+    for prefix in (
+        "Here's a note:",
+        "Here is a note:",
+        "Note:",
+        "Here's the note:",
+        "Here is the note:",
+    ):
+        if text.lower().startswith(prefix.lower()):
+            text = text[len(prefix):].strip()
+
+    # Keep only complete sentences if possible.
+    last_end = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
+    if last_end != -1:
+        text = text[: last_end + 1]
+
+    # Hard character cap for phone readability.
+    if len(text) > 500:
+        clipped = text[:500]
+        last_end = max(clipped.rfind("."), clipped.rfind("!"), clipped.rfind("?"))
+        if last_end != -1:
+            text = clipped[: last_end + 1]
+        else:
+            text = clipped.rstrip() + "..."
+
+    return text
+
+
 def call_ollama(prompt: str) -> str:
     body = {
         "model": OLLAMA_MODEL,
@@ -368,7 +421,7 @@ def call_ollama(prompt: str) -> str:
         "stream": False,
         "options": {
             "temperature": 0.2,
-            "num_predict": 500,
+            "num_predict": OLLAMA_NUM_PREDICT,
         },
     }
 
@@ -383,8 +436,7 @@ def call_ollama(prompt: str) -> str:
         data = json.loads(resp.read().decode("utf-8"))
 
     text = data.get("response", "").strip()
-    text = " ".join(text.split())
-    return text
+    return clean_llm_note(text)
 
 
 def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
@@ -401,6 +453,7 @@ def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
             return cached
 
     prompt = ollama_prompt_for_row(row, roles)
+
     try:
         explanation = call_ollama(prompt)
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
@@ -457,6 +510,7 @@ def select_key_moments(rows: list[dict]) -> list[dict]:
 
     deduped = sorted(deduped, key=lambda r: r["ply"])
     return deduped[:MAX_KEY_MOMENTS_IN_REPORT]
+
 
 def should_make_board_for(row: dict, board_count: int) -> bool:
     if board_count >= MAX_KEY_MOMENTS_WITH_BOARDS:
@@ -602,7 +656,15 @@ def human_notes(rows: list[dict], roles: dict) -> str:
     return "\n\n".join(notes)
 
 
-def write_report(game: chess.pgn.Game, roles: dict, pgn_path: Path, out_path: Path, rows: list[dict], key_moments: list[dict], final_svg: str) -> None:
+def write_report(
+    game: chess.pgn.Game,
+    roles: dict,
+    pgn_path: Path,
+    out_path: Path,
+    rows: list[dict],
+    key_moments: list[dict],
+    final_svg: str,
+) -> None:
     headers = game.headers
     result = headers.get("Result", "?")
     date = headers.get("Date", "unknown")
@@ -768,6 +830,7 @@ def write_report(game: chess.pgn.Game, roles: dict, pgn_path: Path, out_path: Pa
 
 def update_index() -> None:
     reports = sorted(p for p in ANALYSIS_DIR.glob("*.md") if p.name != "index.md")
+
     lines = ["# Chess Analysis Index", ""]
     if not reports:
         lines.append("No games analyzed yet.")
@@ -776,6 +839,7 @@ def update_index() -> None:
             title = p.stem.replace("_", " ")
             lines.append(f"- [{title}]({p.name})")
     lines.append("")
+
     INDEX.write_text("\n".join(lines), encoding="utf-8")
 
 
