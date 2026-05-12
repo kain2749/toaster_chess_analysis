@@ -1,0 +1,1 @@
+The CPU's eagerness to exchange queens has led to a curious decision on move 17: bxa5. This pawn grab, however, allows White to maintain control of the center and keep the bishop pair intact. The engine's verdict is clear: c5 would have been a more judicious choice, as it would have put pressure on d4 and forced White to respond with a potentially weakening

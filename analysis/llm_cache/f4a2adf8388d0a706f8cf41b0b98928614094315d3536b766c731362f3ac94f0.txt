@@ -1,0 +1,1 @@
+The knight on h4: a futile attempt to exert pressure on Black's position. The pawn on e5 is not under attack, nor is the bishop on c8 in any danger of being driven back. In fact, it's the White queen that finds itself somewhat exposed after this move, its influence diminished by the Knight's foray into the kingside. The evaluation drops to +0.

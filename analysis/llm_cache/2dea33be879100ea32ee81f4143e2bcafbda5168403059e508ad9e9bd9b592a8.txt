@@ -1,0 +1,1 @@
+The inevitable. At move 40, I played Rh1#, checkmating White's king. The engine verdict is unsurprising: this was the forced move to end the game. In fact, it's a bit of a non-move, as the position was already won for Black. The pawn on e4 and the rook on h1 were mere spectators in the final act. The problem

@@ -1,0 +1,1 @@
+The CPU's Qa4 is a mistake, as it allows Black to seize control of the queenside and gain a strong initiative. The White queen on a4 is poorly placed, unable to influence the central squares or protect the kingside. Meanwhile, the Black pieces are poised to launch a swift counterattack against the weakened White position. The eval loss of 356 centipawns is a testament

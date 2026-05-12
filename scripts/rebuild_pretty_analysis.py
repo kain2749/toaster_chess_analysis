@@ -37,8 +37,9 @@ BOARD_SIZE = 520
 # Show all truly bad stuff. Keep the fluff capped.
 MAX_INACCURACIES = 4
 MAX_BEST_MOVES = 4
-MAX_KEY_MOMENTS_IN_REPORT = 50
-MAX_KEY_MOMENTS_WITH_BOARDS = 50
+MAX_KEY_MOMENTS_IN_REPORT = 18
+MAX_KEY_MOMENTS_WITH_BOARDS = 10
+IGNORE_KEY_MOMENTS_BEFORE_PLY = 14  # first 7 full moves; ignore opening fluff unless it is a real crime
 
 # Ollama defaults: on by default, disable with TOASTER_USE_OLLAMA=0
 USE_OLLAMA = os.getenv("TOASTER_USE_OLLAMA", "1") != "0"
@@ -297,7 +298,7 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "prompt_version": "toaster_ollama_perspective_v2",
+        "prompt_version": "toaster_ollama_perspective_v3_hitchens_tao_openingfilter",
     }
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
@@ -312,17 +313,21 @@ def ollama_prompt_for_row(row: dict, roles: dict) -> str:
 Rules:
 - Use Stockfish's verdict as truth.
 - No bullets.
-- No intro like "Here's a note".
-- Keep it blunt and simple.
-- Make it position-specific.
+- No intro like 'Here's a note'.
+- Keep it blunt, sharp, and position-specific.
+- Name the pieces and squares involved in the maneuver.
 - Do not invent sacrifices.
 - Do not guess hidden tactics you cannot justify from the engine facts.
-- If the move is Best, explain why it is practical or forcing.
+- If the move is Best, explain why it is practical or forcing without sounding like an engine manual.
 - If the move is bad, explain the obvious problem in plain English.
-- Name the pieces and squares involved in the maneuver.
 - Add a faint Taoist vibe only if it fits naturally: force, balance, overreach, patience, or letting the position punish itself.
-- Sound like a dry, literate critic judging bad chess at 2 AM, somewhat like Christopher Hitchens.
+- Sound like a dry, literate critic judging bad chess at 2 AM, somewhat like Christopher Hitchens, but do not write purple prose.
 - If the tactical sequence needs more than one sentence, use more than one sentence, but do not ramble.
+- Never say 'centipawns' in the prose note.
+- Never say 'Stockfish thinks' in the prose note.
+- Never write generic filler like 'putting pressure' unless you name what piece/square is under pressure.
+- Very rarely, only if it fits naturally and does not obscure the chess point, you may include a short "yo momma" joke.
+- Never let the joke replace the actual chess explanation.
 
 Player info:
 - You are: {you_side}
@@ -342,10 +347,13 @@ Eval after: {fmt_eval(row['eval_after'])}
 Stockfish preferred: {row['best']}
 Centipawn loss: {row['loss_cp']}
 
+Plain-English target:
+Explain why {row['actor']} played something useful or stupid at move {row['move_no']} with {row['played']}. If the preferred move differs, mention {row['best']} only if it helps.
+
 Fallback explanation:
 {row['reason']}
 
-Write the sentence now.
+Write the note now.
 """
 
 
@@ -403,18 +411,35 @@ def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
 
 # ---------- selection ----------
 
+def is_opening_noise(row: dict) -> bool:
+    if row["ply"] >= IGNORE_KEY_MOMENTS_BEFORE_PLY:
+        return False
+
+    # Early disasters still matter. Hanging a queen on move 5 is not "book, bro."
+    if row["label"] in {"Blunder", "Mistake", "Checkmate"}:
+        return False
+
+    if row["loss_cp"] >= LOSS_MISTAKE:
+        return False
+
+    return True
+
+
 def select_key_moments(rows: list[dict]) -> list[dict]:
-    blunders = [r for r in rows if r["label"] == "Blunder"]
-    mistakes = [r for r in rows if r["label"] == "Mistake"]
-    checkmates = [r for r in rows if r["label"] == "Checkmate"]
+    candidate_rows = [r for r in rows if not is_opening_noise(r)]
+
+    blunders = [r for r in candidate_rows if r["label"] == "Blunder"]
+    mistakes = [r for r in candidate_rows if r["label"] == "Mistake"]
+    checkmates = [r for r in candidate_rows if r["label"] == "Checkmate"]
 
     inaccuracies = sorted(
-        [r for r in rows if r["label"] == "Inaccuracy"],
+        [r for r in candidate_rows if r["label"] == "Inaccuracy"],
         key=lambda r: r["loss_cp"],
         reverse=True,
     )[:MAX_INACCURACIES]
 
-    best_moves = [r for r in rows if r["label"] == "Best"][:MAX_BEST_MOVES]
+    # Best moves are seasoning, not dinner. Keep only later forcing/best moves.
+    best_moves = [r for r in candidate_rows if r["label"] == "Best"][:MAX_BEST_MOVES]
 
     selected = blunders + mistakes + checkmates + inaccuracies + best_moves
 
@@ -428,7 +453,6 @@ def select_key_moments(rows: list[dict]) -> list[dict]:
 
     deduped = sorted(deduped, key=lambda r: r["ply"])
     return deduped[:MAX_KEY_MOMENTS_IN_REPORT]
-
 
 def should_make_board_for(row: dict, board_count: int) -> bool:
     if board_count >= MAX_KEY_MOMENTS_WITH_BOARDS:

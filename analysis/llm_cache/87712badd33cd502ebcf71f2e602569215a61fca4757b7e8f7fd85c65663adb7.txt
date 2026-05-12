@@ -1,0 +1,1 @@
+The CPU's attempt to anchor its king on c1 is a futile exercise in overreach. The pawn on b4 is already exerting pressure on White's position, and by retreating the king, White only invites Black to intensify the attack. Meanwhile, the rook on b3 remains a potent force, poised to strike at White's weakened queenside. The engine's verdict is clear

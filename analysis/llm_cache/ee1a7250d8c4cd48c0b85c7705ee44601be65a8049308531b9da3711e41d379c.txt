@@ -1,0 +1,1 @@
+The CPU's eagerness to develop its knight has led to a premature excursion on f6, where it finds itself somewhat isolated from the rest of the board. The pawn structure remains intact, but the balance of forces has shifted in White's favor: the dark-squared bishop is now under pressure, and Black's queenside pieces are still lagging behind. The eval loss is telling - 538

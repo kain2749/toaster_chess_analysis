@@ -1,0 +1,1 @@
+The impulsive strike of Bxf6 on move 22. A hasty attempt to seize control, but one that ultimately overreaches and disrupts balance. The pawn on f6 was a liability waiting to be exploited; instead, it's sacrificed for a fleeting advantage. Stockfish preferred the same move, but that's cold comfort given the eval loss of 511. The position rewards patience

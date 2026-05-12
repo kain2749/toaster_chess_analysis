@@ -1,0 +1,1 @@
+The CPU's g4 is a curious choice, one that belies a deeper understanding of the position. With the Black queenside pawns somewhat cramped, the knight on c6 already eyeing the d5 square, and White's pawn on e3 poised to advance, the CPU has opted for a seemingly innocuous push. However, this move is not without its implications: it allows White to
