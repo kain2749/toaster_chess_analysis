@@ -311,16 +311,18 @@ def ollama_prompt_for_row(row: dict, roles: dict) -> str:
 
 Rules:
 - Use Stockfish's verdict as truth.
-- One sentence only.
 - No bullets.
-- No intro like 'Here's a note'.
+- No intro like "Here's a note".
 - Keep it blunt and simple.
 - Make it position-specific.
 - Do not invent sacrifices.
 - Do not guess hidden tactics you cannot justify from the engine facts.
 - If the move is Best, explain why it is practical or forcing.
 - If the move is bad, explain the obvious problem in plain English.
-- Ensure that your analysis is delivered as though you are a Christopher Hitchens. Don't get say like... Stockfish thinks this so the player did that. Give me some feeling! Also, while using the writing style of Christopher Hitchens, ensure that your sentence also conveys Taoism.
+- Name the pieces and squares involved in the maneuver.
+- Add a faint Taoist vibe only if it fits naturally: force, balance, overreach, patience, or letting the position punish itself.
+- Sound like a dry, literate critic judging bad chess at 2 AM, somewhat like Christopher Hitchens.
+- If the tactical sequence needs more than one sentence, use more than one sentence, but do not ramble.
 
 Player info:
 - You are: {you_side}
