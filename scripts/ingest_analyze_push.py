@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
 import datetime as dt
-import glob
-import os
 import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import chess
@@ -35,33 +32,51 @@ def safe_slug(text: str) -> str:
 
 def find_stockfish() -> str:
     for candidate in ("stockfish", "/usr/games/stockfish", "/usr/bin/stockfish"):
-        path = shutil.which(candidate) if candidate == "stockfish" else candidate
-        if path and Path(path).exists():
-            return path
+        found = shutil.which(candidate)
+        if found:
+            return found
+        p = Path(candidate)
+        if p.exists():
+            return str(p)
     raise RuntimeError("Stockfish not found. Try: sudo apt install stockfish")
 
 
-def score_to_cp(score: chess.engine.PovScore) -> int:
+def white_cp(score: chess.engine.PovScore) -> int:
     pov = score.white()
     mate = pov.mate()
     if mate is not None:
         return 100000 if mate > 0 else -100000
-    cp = pov.score()
-    return cp if cp is not None else 0
+    return pov.score() or 0
 
 
 def fmt_eval(cp: int) -> str:
-    if abs(cp) >= 90000:
-        return "M" if cp > 0 else "-M"
+    if cp >= 90000:
+        return "White mate"
+    if cp <= -90000:
+        return "Black mate"
     return f"{cp / 100:+.2f}"
 
 
-def game_name(game: chess.pgn.Game, src: Path) -> str:
+def fmt_swing(cp: int) -> str:
+    return f"{cp} cp"
+
+
+def game_report_name(game: chess.pgn.Game, src: Path) -> str:
     date = game.headers.get("Date", "unknown").replace(".", "-")
     white = safe_slug(game.headers.get("White", "white"))
     black = safe_slug(game.headers.get("Black", "black"))
     base = safe_slug(src.stem)
     return f"{date}_{white}_vs_{black}_{base}"
+
+
+def classify_loss(loss_cp: int) -> str:
+    if loss_cp >= 700:
+        return "Blunder"
+    if loss_cp >= 300:
+        return "Mistake"
+    if loss_cp >= 150:
+        return "Inaccuracy"
+    return "Normal"
 
 
 def analyze_game(pgn_path: Path, engine_path: str) -> Path:
@@ -71,7 +86,7 @@ def analyze_game(pgn_path: Path, engine_path: str) -> Path:
     if game is None:
         raise RuntimeError(f"No PGN game found in {pgn_path}")
 
-    name = game_name(game, pgn_path)
+    name = game_report_name(game, pgn_path)
     out_path = ANALYSIS_DIR / f"{name}.md"
 
     board = game.board()
@@ -81,110 +96,142 @@ def analyze_game(pgn_path: Path, engine_path: str) -> Path:
     with chess.engine.SimpleEngine.popen_uci(engine_path) as engine:
         for ply, move in enumerate(game.mainline_moves(), start=1):
             before = board.copy()
-            mover = "White" if before.turn == chess.WHITE else "Black"
+            mover_is_white = before.turn == chess.WHITE
+            mover = "White" if mover_is_white else "Black"
 
             info_before = engine.analyse(before, chess.engine.Limit(depth=DEPTH))
-            eval_before = score_to_cp(info_before["score"])
+            eval_before = white_cp(info_before["score"])
             best = info_before.get("pv", [None])[0]
-
-            board.push(move)
-
-            info_after = engine.analyse(board, chess.engine.Limit(depth=DEPTH))
-            eval_after = score_to_cp(info_after["score"])
-
-            # From mover's perspective: bad if White's eval drops or Black's eval rises.
-            if mover == "White":
-                swing = eval_after - eval_before
-                badness = -swing
-            else:
-                swing = eval_after - eval_before
-                badness = swing
 
             san = before.san(move)
             best_san = before.san(best) if best else "unknown"
 
-            rows.append({
+            board.push(move)
+
+            info_after = engine.analyse(board, chess.engine.Limit(depth=DEPTH))
+            eval_after = white_cp(info_after["score"])
+
+            # Loss from the mover's perspective.
+            # White wants eval to rise. Black wants eval to fall.
+            loss_cp = (eval_before - eval_after) if mover_is_white else (eval_after - eval_before)
+
+            row = {
                 "ply": ply,
                 "move_no": before.fullmove_number,
-                "mover": mover,
+                "side": mover,
                 "san": san,
                 "eval_before": eval_before,
                 "eval_after": eval_after,
                 "best": best_san,
-                "badness": badness,
-            })
+                "loss_cp": loss_cp,
+                "classification": classify_loss(loss_cp),
+            }
 
-            if badness >= SWING_THRESHOLD_CP:
-                critical.append(rows[-1])
+            rows.append(row)
+
+            if loss_cp >= SWING_THRESHOLD_CP:
+                critical.append(row)
 
     headers = game.headers
+    result = headers.get("Result", "?")
+    white = headers.get("White", "White")
+    black = headers.get("Black", "Black")
 
     lines = []
-    lines.append(f"# Chess Analysis: {headers.get('White', 'White')} vs {headers.get('Black', 'Black')}")
-    lines.append("")
-    lines.append(f"- **Result:** {headers.get('Result', '?')}")
-    lines.append(f"- **Date:** {headers.get('Date', 'unknown')}")
-    lines.append(f"- **Source PGN:** `{pgn_path.name}`")
-    lines.append(f"- **Engine:** Stockfish")
-    lines.append(f"- **Depth:** {DEPTH}")
-    lines.append("")
 
-    lines.append("## Quick Read")
-    lines.append("")
+    lines += [
+        f"# {white} vs {black}",
+        "",
+        f"**Result:** {result}  ",
+        f"**Date:** {headers.get('Date', 'unknown')}  ",
+        f"**Source PGN:** `{pgn_path.name}`  ",
+        f"**Engine:** Stockfish depth {DEPTH}",
+        "",
+        "---",
+        "",
+        "## Quick Read",
+        "",
+    ]
+
     if critical:
-        worst = max(critical, key=lambda r: r["badness"])
-        lines.append(
-            f"The biggest engine complaint is **{worst['move_no']}. {worst['san']}** "
-            f"by {worst['mover']}, where the eval moved from "
-            f"**{fmt_eval(worst['eval_before'])}** to **{fmt_eval(worst['eval_after'])}**. "
-            f"Stockfish preferred **{worst['best']}**."
-        )
+        worst = max(critical, key=lambda r: r["loss_cp"])
+        lines += [
+            f"Biggest engine complaint: **{worst['move_no']}. {worst['san']}** by **{worst['side']}**.",
+            "",
+            f"- Classification: **{worst['classification']}**",
+            f"- Eval before: **{fmt_eval(worst['eval_before'])}**",
+            f"- Eval after: **{fmt_eval(worst['eval_after'])}**",
+            f"- Engine preferred: **{worst['best']}**",
+            f"- Loss: **{fmt_swing(worst['loss_cp'])}**",
+            "",
+        ]
     else:
-        lines.append("No huge eval crashes found at the configured threshold. Either the game was clean, short, or Stockfish depth is too shallow to yell properly.")
-    lines.append("")
+        lines += [
+            "No major eval crashes found at the current threshold.",
+            "",
+        ]
 
-    lines.append("## Critical Moments")
-    lines.append("")
+    lines += [
+        "---",
+        "",
+        "## Critical Moments",
+        "",
+    ]
+
     if critical:
         for r in critical[:10]:
-            lines.append(f"### Move {r['move_no']}: {r['mover']} played {r['san']}")
-            lines.append("")
-            lines.append(f"- Eval before: **{fmt_eval(r['eval_before'])}**")
-            lines.append(f"- Eval after: **{fmt_eval(r['eval_after'])}**")
-            lines.append(f"- Stockfish preferred: **{r['best']}**")
-            lines.append(f"- Swing severity: **{r['badness']} cp**")
-            lines.append("")
+            lines += [
+                f"### {r['classification']}: {r['move_no']}. {r['san']} by {r['side']}",
+                "",
+                f"- Eval before: **{fmt_eval(r['eval_before'])}**",
+                f"- Eval after: **{fmt_eval(r['eval_after'])}**",
+                f"- Engine preferred: **{r['best']}**",
+                f"- Loss: **{fmt_swing(r['loss_cp'])}**",
+                "",
+            ]
     else:
-        lines.append("No critical moves above threshold.")
-        lines.append("")
+        lines += ["No critical moves above threshold.", ""]
 
-    lines.append("## Move-by-Move Engine Table")
-    lines.append("")
-    lines.append("| Ply | Move | Side | Played | Eval Before | Eval After | Stockfish Preferred |")
-    lines.append("|---:|---:|---|---|---:|---:|---|")
+    lines += [
+        "---",
+        "",
+        "## Move-by-Move Engine Table",
+        "",
+        "| Ply | Move | Side | Played | Eval Before | Eval After | Preferred | Loss | Label |",
+        "|---:|---:|---|---|---:|---:|---|---:|---|",
+    ]
+
     for r in rows:
         lines.append(
-            f"| {r['ply']} | {r['move_no']} | {r['mover']} | {r['san']} | "
-            f"{fmt_eval(r['eval_before'])} | {fmt_eval(r['eval_after'])} | {r['best']} |"
+            f"| {r['ply']} | {r['move_no']} | {r['side']} | {r['san']} | "
+            f"{fmt_eval(r['eval_before'])} | {fmt_eval(r['eval_after'])} | "
+            f"{r['best']} | {r['loss_cp']} | {r['classification']} |"
         )
 
-    lines.append("")
-    lines.append("## PGN")
-    lines.append("")
-    lines.append("```pgn")
-    lines.append(pgn_path.read_text(encoding="utf-8", errors="replace").strip())
-    lines.append("```")
-    lines.append("")
+    lines += [
+        "",
+        "---",
+        "",
+        "## PGN",
+        "",
+        "```pgn",
+        pgn_path.read_text(encoding="utf-8", errors="replace").strip(),
+        "```",
+        "",
+    ]
 
     out_path.write_text("\n".join(lines), encoding="utf-8")
     return out_path
 
 
 def update_index():
-    reports = sorted(ANALYSIS_DIR.glob("*.md"))
-    reports = [p for p in reports if p.name != "index.md"]
+    reports = sorted(p for p in ANALYSIS_DIR.glob("*.md") if p.name != "index.md")
 
-    lines = ["# Chess Analysis Index", ""]
+    lines = [
+        "# Chess Analysis Index",
+        "",
+    ]
+
     if not reports:
         lines.append("No games analyzed yet.")
     else:
