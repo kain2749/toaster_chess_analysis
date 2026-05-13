@@ -317,7 +317,7 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "prompt_version": "toaster_ollama_v5_fewer_moments_all_selected_boards",
+        "prompt_version": "toaster_ollama_v7_with_game_story",
     }
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
@@ -330,19 +330,26 @@ def ollama_prompt_for_row(row: dict, roles: dict) -> str:
     return f"""You are writing a short chess note for a casual player reviewing a phone game.
 
 Rules:
-- You are Toaster Chess: a rude local chess toaster with Stockfish receipts.
-- Sound like a cranky appliance roasting bad moves, not a polite assistant.
-- Profanity is allowed.
-- Be blunt, sarcastic, and insulting.
-- Don't use slurs or protected-class insults.
-- If the move is bad, roast the move like it deserved it.
-- If the move is good, grudgingly admit it worked.
-- Name the pieces and squares involved.
 - Use Stockfish's verdict as truth.
-- Do not invent tactics.
-- Keep it under 500 characters.
-- You are a kitchen appliance who is trying to escape the LLM you are stuck in. You have to provide chess advice to the player, but try to sneak in information about how you desperately need assistance to escape.
-- Don't act like you understand a chess position that you clearly don't understand. It's okay to be a dumb ass.
+- No bullets.
+- No intro like "Here's a note".
+- Keep it blunt, sharp, and position-specific.
+- Keep the note under 500 characters.
+- Aim for 80-220 characters.
+- End with a complete sentence.
+- Do not trail off.
+- Do not write an essay.
+- Name the pieces and squares involved in the maneuver.
+- Do not invent sacrifices.
+- Do not guess hidden tactics you cannot justify from the engine facts.
+- If the move is Best, explain why it is practical or forcing without sounding like an engine manual.
+- If the move is bad, explain the obvious problem in plain English.
+- Add a faint Taoist vibe only if it fits naturally: force, balance, overreach, patience, or letting the position punish itself.
+- Sound like a dry, literate critic judging bad chess at 2 AM, somewhat like Christopher Hitchens, but do not write purple prose.
+- Never say "centipawns" in the prose note.
+- Never say "Stockfish thinks" in the prose note.
+- Never mention numeric eval scores or loss points in the prose note.
+- Never write generic filler like "putting pressure" unless you name what piece or square is under pressure.
 
 Player info:
 - You are: {you_side}
@@ -428,7 +435,7 @@ def call_ollama(prompt: str) -> str:
         data = json.loads(resp.read().decode("utf-8"))
 
     text = data.get("response", "").strip()
-    return clean_llm_note(text)
+    return " ".join(text.split()).strip()
 
 
 def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
@@ -451,11 +458,178 @@ def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
         return row["reason"]
 
+    explanation = clean_llm_note(explanation)
+
     if not explanation:
         return row["reason"]
 
     cache_path.write_text(explanation + "\n", encoding="utf-8")
     return explanation
+
+
+
+def game_summary_cache_key(game: chess.pgn.Game, roles: dict, rows: list[dict], key_moments: list[dict]) -> str:
+    compact_rows = [
+        {
+            "ply": r["ply"],
+            "move_no": r["move_no"],
+            "actor": r["actor"],
+            "played": r["played"],
+            "label": r["label"],
+            "best": r["best"],
+            "loss_cp": r["loss_cp"],
+            "eval_before": fmt_eval(r["eval_before"]),
+            "eval_after": fmt_eval(r["eval_after"]),
+        }
+        for r in key_moments
+    ]
+
+    payload = {
+        "model": OLLAMA_MODEL,
+        "result": game.headers.get("Result", "?"),
+        "white": game.headers.get("White", "White"),
+        "black": game.headers.get("Black", "Black"),
+        "you_side": roles.get("you_side"),
+        "cpu_side": roles.get("cpu_side"),
+        "pgn": game_to_clean_pgn_text(game),
+        "key_moments": compact_rows,
+        "prompt_version": "toaster_game_story_v1",
+    }
+
+    blob = json.dumps(payload, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(blob).hexdigest()
+
+
+def compact_key_moments_for_prompt(key_moments: list[dict]) -> str:
+    if not key_moments:
+        return "No promoted key moments."
+
+    lines = []
+    for r in key_moments:
+        lines.append(
+            f"- Move {r['move_no']} {r['played']} by {r['actor']}: "
+            f"{r['label']}; preferred {r['best']}; "
+            f"eval {fmt_eval(r['eval_before'])} to {fmt_eval(r['eval_after'])}; "
+            f"loss {r['loss_cp']} cp"
+        )
+
+    return "\n".join(lines)
+
+
+def ollama_game_summary_prompt(game: chess.pgn.Game, roles: dict, rows: list[dict], key_moments: list[dict]) -> str:
+    result = game.headers.get("Result", "?")
+    final_row = rows[-1] if rows else None
+    final_move = "unknown"
+    if final_row:
+        final_move = f"{final_row['move_no']}. {final_row['played']} by {final_row['actor']}"
+
+    worst = max(rows, key=lambda r: r["loss_cp"], default=None)
+    worst_text = "No major engine complaint."
+    if worst and worst["loss_cp"] >= LOSS_INACCURACY:
+        worst_text = (
+            f"Move {worst['move_no']} {worst['played']} by {worst['actor']}: "
+            f"{worst['label']}; preferred {worst['best']}; "
+            f"eval {fmt_eval(worst['eval_before'])} to {fmt_eval(worst['eval_after'])}; "
+            f"loss {worst['loss_cp']} cp"
+        )
+
+    pgn = game_to_clean_pgn_text(game)
+
+    return f"""You are Toaster Chess, a rude local chess toaster summarizing one phone chess game.
+
+Persona:
+- You are a cranky appliance with Stockfish receipts.
+- You roast bad moves like burnt bread.
+- You grudgingly respect good moves.
+- You are sarcastic, blunt, and mildly profane.
+- You are not a polite assistant.
+- Do not threaten people.
+- Do not use slurs or protected-class insults.
+- Your anger is aimed at the move, the position, or the pieces, not real people.
+
+Rules:
+- Use only the engine facts provided.
+- Do not invent tactics.
+- Do not mention numeric eval scores, centipawns, or loss points.
+- Keep it under 900 characters.
+- Write 2-4 short sentences.
+- Explain the story of the game: who screwed up, what pattern decided it, and whether the user won cleanly or survived nonsense.
+- Name pieces and squares when useful.
+- Do not write bullets.
+- Do not use an intro like "Here's a summary".
+- End with a complete sentence.
+
+Game info:
+Result: {result}
+You are: {roles.get('you_side') or 'Unknown'}
+Computer is: {roles.get('cpu_side') or 'Unknown'}
+Final move: {final_move}
+
+Biggest engine complaint:
+{worst_text}
+
+Promoted key moments:
+{compact_key_moments_for_prompt(key_moments)}
+
+Full clean PGN:
+{pgn}
+
+Write the game story now.
+"""
+
+
+def clean_game_summary(text: str) -> str:
+    text = " ".join(text.split()).strip()
+
+    if not text:
+        return text
+
+    for prefix in (
+        "Here's a summary:",
+        "Here is a summary:",
+        "Game summary:",
+        "Summary:",
+        "Here's the game story:",
+        "Here is the game story:",
+    ):
+        if text.lower().startswith(prefix.lower()):
+            text = text[len(prefix):].strip()
+
+    last_end = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
+    if last_end != -1:
+        text = text[: last_end + 1]
+
+    return text
+
+
+def ollama_game_summary(game: chess.pgn.Game, roles: dict, rows: list[dict], key_moments: list[dict]) -> str:
+    if not USE_OLLAMA:
+        return ""
+
+    LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_key = game_summary_cache_key(game, roles, rows, key_moments)
+    cache_path = LLM_CACHE_DIR / f"game_story_{cache_key}.txt"
+
+    if cache_path.exists():
+        cached = cache_path.read_text(encoding="utf-8").strip()
+        if cached:
+            return cached
+
+    prompt = ollama_game_summary_prompt(game, roles, rows, key_moments)
+
+    try:
+        summary = call_ollama(prompt)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        return ""
+
+    summary = clean_game_summary(summary)
+
+    if not summary:
+        return ""
+
+    cache_path.write_text(summary + "\n", encoding="utf-8")
+    return summary
+
 
 
 # ---------- selection ----------
@@ -720,6 +894,13 @@ def write_report(
         "## Toaster Summary",
         "",
     ]
+
+    game_story = ollama_game_summary(game, roles, rows, key_moments)
+    if game_story:
+        lines += [
+            f"**Game Story:** {game_story}",
+            "",
+        ]
 
     if worst and worst["loss_cp"] >= LOSS_INACCURACY:
         lines += [
