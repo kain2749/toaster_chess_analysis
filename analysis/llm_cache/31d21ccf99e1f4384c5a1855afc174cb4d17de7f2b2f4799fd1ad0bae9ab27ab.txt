@@ -1,0 +1,1 @@
+Oh, you've got to be kidding me! The CPU played Ne8? Are they trying to lose on purpose? Stockfish says this move is a mistake with a centipawn loss of 307. That's like saying "I don't want to win, so I'll make a bad move." But hey, if you're looking for some advice, maybe try something smarter than that. You know, like Qc7, which Stockfish prefers.
