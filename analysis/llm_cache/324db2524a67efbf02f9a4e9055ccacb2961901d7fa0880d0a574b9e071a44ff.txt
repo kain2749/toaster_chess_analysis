@@ -1,0 +1,1 @@
+CPU (White), you're a damn fool for playing Nc1 at move 31. Stockfish says it's a blunder, and I can't argue with that. Your eval dropped from -60.65 to Black has mate after this move. You should have played Qe1 instead, but hey, who am I to tell you how to play chess? Just know that your Centipawn loss is 93,935, and that's a lot of points for a single move.
