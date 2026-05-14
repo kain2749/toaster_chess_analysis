@@ -127,3 +127,57 @@ Restart the timer:
 ```bash
 systemctl --user start toaster-chess-poll.timer
 ```
+
+## Ollama / VRAM Behavior
+
+This project uses local Ollama for the rude Toaster Chess commentary.
+
+Ollama runs as a local service, but the model should not sit in VRAM forever. The analysis script loads the model when needed, generates the move notes / game story, then unloads it afterward.
+
+Expected behavior:
+
+1. PGN arrives.
+2. Stockfish analyzes the game.
+3. Ollama loads the model into GPU VRAM.
+4. VRAM availability drops while analysis is running.
+5. Analysis finishes.
+6. The script unloads the Ollama model.
+7. VRAM availability returns after a few seconds.
+
+Verify current Ollama model state:
+
+```bash
+ollama ps
+```
+
+If a model is stuck in VRAM:
+```bash
+ollama stop dolphin-mistral
+```
+
+The systemd override for my RX 6600 uses:
+```ini
+[Service]
+Environment="HSA_OVERRIDE_GFX_VERSION=10.3.0"
+Environment="OLLAMA_KEEP_ALIVE=5m"
+```
+
+The Python script also calls Ollama with keep_alive: 0 at shutdown so the model gets evicted from VRAM after analysis.
+
+My GNOME status line shows available VRAM, so a drop from ~6.5G available to ~2.0G available means Ollama is active, not that VRAM vanished into the cornfield.
+
+I somewhat apologize in advance for the colors amdpu_top uses.
+
+Before / idle:
+
+![custom GNOME status bar in normal times, not being attacked by llama](docs/images/normal_not_eaten_by_angry_lammas.png)
+
+![amdgpu_top with very interesting colors](docs/images/why_these_colors_for_cli?.png)
+
+During Ollama analysis:
+
+![my custom GNOME status bar while VRAM is observing olamma in natural habitat](docs/images/this_is_olamma_in_nature.png)
+
+![amdgpu_top again with the win](docs/images/example_of_olamma_consumption.png)
+
+for future me: the status line reports available VRAM, not used VRAM.
