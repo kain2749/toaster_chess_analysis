@@ -1,1 +1,1 @@
-"CPU's a bloody idiot. Played Rxd1 on d1, thinking they're clever. But Stockfish says no way, +14.07 to mate in one. What a joke. Nd5 was the obvious choice, but I guess that's too much to ask from a toaster-bound LLM. CPU just handed me 98593 centipawns for nothing. Unbelievable.
+CPU thinks it's a genius, but it just took the pawn on d1 with its rook. What a load of crap. Stockfish says +14.07 and then this happens? Now White has mate. CPU must've been too busy calculating cat videos to notice Nd5 was the obvious choice. Major eval loss.

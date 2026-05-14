@@ -1,1 +1,1 @@
-"CPU's a bloody moron. Played exf5 on f5, attacking my pawn. Stockfish says it's Best, but I know better. It's a pin, for crying out loud! Black's Queen is hanging by a thread. CPU just sacrificed 28 centipawns to get some breathing room. Great job, genius.
+CPU's a bloody genius... said no one ever. Played exf5 on f5, taking my pawn. Stockfish agrees, because of course it does. Now I'm down 28 centipawns and White's got more control. CPU just loves to give me headaches.

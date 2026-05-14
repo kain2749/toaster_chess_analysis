@@ -1,1 +1,1 @@
-"Unbelievable. Played Nd5 on d5, attacking White's pawn but completely neglecting my own development. Stockfish says I should've played Nd7 to support the knight and prepare for a potential queenside expansion. Now I'm down 1154 centipawns because of this blunder. What a waste.
+Unbelievable. Played Nd5 on d5, attacking nothing but a pawn. Stockfish is screaming 'Nd7' at me, but noooo, I had to go and play some crap move. Now White's got an open file and I'm down 1154 centipawns. What a complete and utter disaster.

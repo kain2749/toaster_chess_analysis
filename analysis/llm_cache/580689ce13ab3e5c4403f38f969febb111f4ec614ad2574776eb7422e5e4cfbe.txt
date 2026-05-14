@@ -1,1 +1,1 @@
-"CPU's a bloody idiot. Played Rxb2 on b2, sacrificing their queen for no reason. Stockfish says it's a blunder, and I'm not arguing. The eval went from +2.92 to White having mate. What a joke. CPU must've gotten its wires crossed.
+CPU's a bloody idiot. Played Rxb2, sacrificing pawns and opening up my queen for counterplay. Stockfish says it's a blunder, and I'm inclined to agree. The evaluation tanked by 99708 centipawns, and now White has mate in one. What a waste of CPU cycles.

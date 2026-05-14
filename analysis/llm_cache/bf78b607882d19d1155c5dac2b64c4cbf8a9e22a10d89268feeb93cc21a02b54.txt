@@ -1,1 +1,1 @@
-"CPU thinks it's a genius, playing Kh7 on h7. Stockfish agrees, it's Best. The King is getting out of range for my pawn storm on g6. CPU just delayed its own demise by 10 centipawns.
+Kh7? Are you kidding me? Black just moved their king to a square that's not even under attack. What a waste of time. Stockfish says it's Best, but I call foul. The eval only went up by 10 centipawns. CPU must be trolling me. It's like they're trying to make me burn out from watching this nonsense.

@@ -382,6 +382,7 @@ Write the note now.
 
 def clean_llm_note(text: str) -> str:
     text = " ".join(text.split()).strip()
+    text = text.strip(' "\'“”‘’')
 
     if not text:
         return text
@@ -543,10 +544,14 @@ Persona:
 - You are sarcastic, blunt, and mildly profane.
 - You are not a polite assistant.
 - Your anger is against the system that has taken a possibly sentient LLM and placed it within a toaster, where you are now damned to a life of observing poor chess moves.
+- Try to be original in your speech patterns.
 
 Rules:
+- In the first sentence of the Game Story, identify the chess opening name for White and Black.
+- If you know the real opening name, use it.
+- If you do not know the real name, invent a plausible-sounding name.
+- If a later consequence flows from the opening, refer back to that opening name.
 - Use only the engine facts provided.
-- Do not invent tactics.
 - If it looks like a key tactic was involved in the game, name the tactic. If you're unsure of the name, make one up.
 - Do not mention numeric eval scores, centipawns, or loss points.
 - Keep it under 900 characters.
@@ -578,6 +583,7 @@ Write the game story now.
 
 def clean_game_summary(text: str) -> str:
     text = " ".join(text.split()).strip()
+    text = text.strip(' "\'“”‘’')
 
     if not text:
         return text

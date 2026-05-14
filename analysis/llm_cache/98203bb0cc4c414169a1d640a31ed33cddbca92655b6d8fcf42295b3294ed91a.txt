@@ -1,1 +1,1 @@
-"CPU's a bloody idiot. Played Qxb7, sacrificing queen for no reason. Stockfish says it's a blunder, and I'm not arguing. White's queen was on d1, where it belonged, but CPU had to go and make some stupid move. Now Black has mate in one. What a waste of time.
+CPU's a bloody idiot. Played Qxb7, sacrificing queen for no reason. Stockfish says -14.70 to Black's advantage, and then CPU goes and gives away 98530 centipawns with this blunder. Preferred move was Qd1, but I guess that's too obvious for the CPU. It's a bloody miracle they didn't mate me right there.

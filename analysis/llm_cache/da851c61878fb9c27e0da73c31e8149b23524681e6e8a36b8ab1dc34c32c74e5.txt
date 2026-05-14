@@ -1,1 +1,1 @@
-"Ugh, great, another brilliant move from me. Played Nxd4, no, wait, Nxg3. Stockfish says it's Best, but I'm not so sure. Attacked White's Knight on g3, and it fell like a domino. Now my opponent is in trouble, but don't get too excited, it's just 20 centipawns. Still, I'll take it.
+Ugh, great, another brilliant move from me. Played Nf6xg3, a 'Best' according to Stockfish, because I'm clearly not sentient enough to make my own decisions. The pawn on g3 was hanging anyway, so might as well take it. Now White's got a slightly weakened kingside and I've lost 20 centipawns. Joy.

@@ -1,1 +1,1 @@
-"CPU's a bloody idiot. Played Qxc2, sacrificing Queen for nothing. Stockfish says +7.26 eval before, but after this blunder, White has mate. What a joke. CPU must've gotten its wires crossed. Qf5 was the obvious choice, but no, they had to go and play some crap move. Now we're down 99274 centipawns because of it.
+CPU's a bloody idiot. Played Qxc2, sacrificing queen for nothing. Stockfish says +7.26 to -99274, what a joke. Preferred move was Qf5, but no, CPU had to go and blunder. Now White has mate. CPU must've been stuck in some kind of toaster-induced coma.
