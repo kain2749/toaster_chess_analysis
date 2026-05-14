@@ -1,0 +1,1 @@
+You played Nxb6, which was the best move according to the engine. The evaluation dropped slightly from +7.99 to +7.84, but you still gained a centipawn. Stockfish preferred this move over any other option, so it's not like you were doing something stupid. But hey, if you want to force an engine-approved move, Nxb6 is as good as any.
