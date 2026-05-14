@@ -172,7 +172,7 @@ Before / idle:
 
 ![custom GNOME status bar in normal times, not being attacked by llama](docs/images/normal_not_eaten_by_angry_lammas.png)
 
-![amdgpu_top with very interesting colors](docs/images/why_these_colors_for_cli?.png)
+![amdgpu_top with very interesting colors](docs/images/why_these_colors_for_cli.png)
 
 During Ollama analysis:
 
