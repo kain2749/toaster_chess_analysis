@@ -1,0 +1,1 @@
+You played Nd5 because you wanted to annoy White and waste their time. It was a useful move that led to an evaluation of -2.32, but it wasn't the best choice according to the engine. Stockfish preferred Ne4, which would have been better. However, your move still caused a centipawn loss of 13, so you didn't do too badly.

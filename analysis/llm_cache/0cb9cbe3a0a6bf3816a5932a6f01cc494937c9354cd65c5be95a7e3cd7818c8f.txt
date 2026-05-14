@@ -1,0 +1,1 @@
+CPU (White) played Rxd2 because they were so desperate to get rid of that damn knight on d5 that they didn't even consider the fact that their king was hanging out in the open. Black has mate, and White's eval loss is a whopping 91422 centipawns. Kg2 would have been better, but who cares? CPU (White) just lost the game.

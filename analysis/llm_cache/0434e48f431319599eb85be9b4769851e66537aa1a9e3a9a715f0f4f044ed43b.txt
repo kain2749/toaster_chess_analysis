@@ -1,0 +1,1 @@
+You (Black) played Bb4 at move 7 because you were trying to be clever and disrupt White's pawn structure, but in reality, it was just a waste of time. Stockfish didn't like this move either, giving it a centipawn loss of 14. This move is so bad that even if you had played something else, it probably wouldn't have made much difference. You're just being annoying at this point.

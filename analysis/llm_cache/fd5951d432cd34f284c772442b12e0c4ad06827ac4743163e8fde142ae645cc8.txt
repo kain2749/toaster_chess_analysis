@@ -1,0 +1,1 @@
+CPU played g4, which was a blunder. It lost 666 centipawns and dropped from -2.21 to -8.87 in evaluation. Stockfish preferred Qd3 instead, but that's not the point here. The CPU overreached with g4, and Black failed to punish it. In the end, it was the stupid move of g4 that decided the game.
