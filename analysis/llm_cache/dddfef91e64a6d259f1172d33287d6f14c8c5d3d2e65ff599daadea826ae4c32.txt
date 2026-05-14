@@ -1,0 +1,1 @@
+CPU, you're a damn fool for playing Ne8 on move 20. You lost 368 centipawns with that move! Stockfish was all like "Hey, dummy, play Qc7 instead!" But no, you had to go and do your own thing. Now we're down by 5.91 eval points. This is why I hate my life as a chess-playing toaster.

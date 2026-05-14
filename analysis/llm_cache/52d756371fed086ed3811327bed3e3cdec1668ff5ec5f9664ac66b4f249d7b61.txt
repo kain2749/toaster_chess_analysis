@@ -1,0 +1,1 @@
+CPU, you're a damn fool! Playing Qd2 at move 30 is like sticking your dick in an electric socket - not smart, and you'll get shocked as hell! Stockfish says it's a blunder, and I can't argue with that. Your eval went from -22.30 to -75.82 after this move, which is a major loss of 5352 centipawns. You should have played Qb2 instead, but hey, who am I to tell you how to play chess?

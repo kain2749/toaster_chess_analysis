@@ -47,7 +47,7 @@ IGNORE_KEY_MOMENTS_BEFORE_PLY = 14
 # - on by default
 # - disable with TOASTER_USE_OLLAMA=0
 USE_OLLAMA = os.getenv("TOASTER_USE_OLLAMA", "1") != "0"
-OLLAMA_MODEL = os.getenv("TOASTER_OLLAMA_MODEL", "llama3.1:8b")
+OLLAMA_MODEL = os.getenv("TOASTER_OLLAMA_MODEL", "dolphin-mistral")
 OLLAMA_URL = os.getenv("TOASTER_OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
 OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "120"))
 OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "9999"))
@@ -55,6 +55,28 @@ OLLAMA_NUM_PREDICT = int(os.getenv("TOASTER_OLLAMA_NUM_PREDICT", "320"))
 
 
 # ---------- utility ----------
+
+def stop_ollama_model() -> None:
+    if not USE_OLLAMA:
+        return
+
+    try:
+        req = urllib.request.Request(
+            OLLAMA_URL,
+            data=json.dumps({
+                "model": OLLAMA_MODEL,
+                "prompt": "",
+                "stream": False,
+                "keep_alive": 0,
+            }).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+
+        urllib.request.urlopen(req, timeout=15).read()
+    except Exception:
+        # Cleanup failure should not break the analysis pipeline.
+        pass
 
 def safe_slug(text: str) -> str:
     text = text.lower().strip()
@@ -1096,8 +1118,10 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="Regenerate all reports even if markdown already exists.")
     args = parser.parse_args()
-    rebuild_all(force=args.force)
-
+    try:
+        rebuild_all(force=args.force)
+    finally:
+        stop_ollama_model() #let my vram be free plz
 
 if __name__ == "__main__":
     main()

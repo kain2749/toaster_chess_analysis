@@ -1,0 +1,1 @@
+CPU, you're a damn fool for playing Bg2. You just gave me an open line to your king with Ng4+ and Qxg2#. Your eval went from -9.66 to -61.70 in one move! Stockfish preferred h3, but that doesn't make it any less of a blunder. I'm not sure if you were trying to force a tactic or something, but this is just plain stupid.

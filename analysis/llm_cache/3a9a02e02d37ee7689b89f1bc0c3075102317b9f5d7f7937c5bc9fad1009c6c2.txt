@@ -1,0 +1,1 @@
+You (Black) played something useful at move 10 with Nc4. This move is best because it threatens to take White's knight on d5, which would be a good trade for you since your knights are more active than theirs. It also opens up the bishop on c8 to potentially attack White's pieces in the future. Stockfish agrees with this move, giving it a centipawn loss of 0.

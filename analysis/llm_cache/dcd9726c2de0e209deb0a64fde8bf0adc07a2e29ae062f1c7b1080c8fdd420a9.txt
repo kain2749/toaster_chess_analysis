@@ -1,0 +1,1 @@
+CPU, you're a damn fool! You played Qxc2 at move 24, and Stockfish says it's a blunder. Your eval before was +7.26, but after that stupid move, White has mate. The preferred move for Black was Qf5, but hey, who cares? You lost 99,274 centipawns with that move. And you know what they say: "A fool and his queen are soon parted.

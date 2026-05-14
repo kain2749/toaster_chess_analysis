@@ -1,0 +1,1 @@
+You (Black) played something useful at move 12 with Nxg3. Stockfish says it's a Best move, and I'm not here to argue with the machine. It's -1.76 after your move, which is better than the -1.96 before. So, you might have gained some ground there. But hey, don't get too excited. You're still losing, and it's only move 12.
