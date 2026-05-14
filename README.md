@@ -1,6 +1,6 @@
 # Toaster Chess Analysis
 
-PGN ingestion and Stockfish analysis for games exported from my crappy Android chess app.
+PGN ingestion and Stockfish analysis for games exported from my crappy [Android chess app](https://play.google.com/store/apps/details?id=uk.co.aifactory.chessfree&hl=en_US).
 
 This repo exists because I wanted my phone chess games to get roasted automatically.
 
