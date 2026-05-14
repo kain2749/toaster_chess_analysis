@@ -1,1 +1,0 @@
-Black's knight move to f6 allows White to develop a strong bishop and gain control of the center, but it also weakens Black's kingside and creates a potential target for attack.

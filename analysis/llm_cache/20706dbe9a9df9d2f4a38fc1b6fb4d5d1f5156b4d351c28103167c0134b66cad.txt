@@ -1,1 +1,0 @@
-The CPU's Qxe3 is a curious choice, as it allows White to maintain control of the e-file and exert pressure on Black's position. The knight on c5 is now somewhat exposed, while the pawn on e4 remains vulnerable. In contrast, dxe6 would have more directly challenged White's central dominance, but perhaps that was too subtle for the CPU's taste.

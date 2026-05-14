@@ -1,1 +1,0 @@
-The CPU's impulsive decision to play Rxd1 on move 25 is a case of overreach. The rook lunges at White's d-file, but in doing so, it leaves Black's position vulnerable to counterplay. Specifically, the dark-squared bishop on c8 is now exposed and under pressure from White's pawn on e4. Meanwhile, the knight on g6 is

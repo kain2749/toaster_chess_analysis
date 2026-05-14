@@ -1,1 +1,0 @@
-The knight on g5 is a curious choice. It attacks the bishop, but Black's response will be to retreat it, gaining time and balance in the position. The engine prefers this move, and I must concur: patience is often rewarded in chess, and letting the position unfold as it may is sometimes the best course of action.

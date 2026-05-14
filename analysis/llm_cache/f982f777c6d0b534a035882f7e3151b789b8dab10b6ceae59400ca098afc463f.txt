@@ -1,1 +1,0 @@
-The CPU's move is a curious one: fxe5. At first glance, it seems to be an attempt to challenge White's control of the center, but upon closer inspection, it's clear that Black is merely reacting to White's previous moves. The engine verdict is telling: this move is indeed the best available option for Black. The eval before and after the move reveals a subtle shift in

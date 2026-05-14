@@ -1,1 +1,0 @@
-The CPU's h4 is a blunder, as it weakens the kingside and allows Black to potentially launch a pawn storm on g5. The engine prefers a more subtle approach, but I suppose patience is not always in abundance at this hour.

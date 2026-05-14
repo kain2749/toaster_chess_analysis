@@ -1,1 +1,0 @@
-The CPU's impatience is its downfall. On move 34, White plays f3, a move that disrupts the balance of pawns on the kingside and allows Black to exert pressure on the e-file. The pawn on f3 also weakens the dark squares in front of the king, creating an overreach that will be punished later. The engine's preferred move is f5

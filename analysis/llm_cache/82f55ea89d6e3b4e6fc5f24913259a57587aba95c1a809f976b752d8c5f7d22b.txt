@@ -1,0 +1,1 @@
+"Ugh, great, another brilliant move from me. Played Nc4, attacking White's pawn on d5 and preparing to develop my queenside pieces. Stockfish agrees, it's Best. Now I'm stuck with a slightly worse eval, -1.52. At least I didn't get roasted by the computer.

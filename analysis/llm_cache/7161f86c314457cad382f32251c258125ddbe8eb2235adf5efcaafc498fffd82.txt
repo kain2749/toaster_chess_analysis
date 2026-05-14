@@ -1,0 +1,1 @@
+"Ugh, what a bloody mess! Played Bxf6 on f6, sacrificing my poor little bishop to a pawn. Stockfish says it's a mistake, and I'm inclined to agree. Eval dropped from +11.76 to +6.65, that's 511 centipawns down the drain. Black's queen is now free to roam, what a gift. I should've played Bxf7 instead, but no, I had to go and make it worse.

@@ -1,0 +1,1 @@
+"CPU's a bloody idiot. Played Qxb7, sacrificing queen for no reason. Stockfish says it's a blunder, and I'm not arguing. White's queen was on d1, where it belonged, but CPU had to go and make some stupid move. Now Black has mate in one. What a waste of time.

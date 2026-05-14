@@ -1,0 +1,1 @@
+"CPU's a bloody idiot. Played Bf4 on f4, attacking nothing but my pawn on e5. Stockfish says Nxc6+ was the way to go, but no, CPU had to play some fancy-schmancy bishop move that loses 658 centipawns. What a waste of electrons.

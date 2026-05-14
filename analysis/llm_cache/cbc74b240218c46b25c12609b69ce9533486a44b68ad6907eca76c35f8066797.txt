@@ -1,1 +1,0 @@
-You blundered by playing bxc3, which Stockfish also recommends, but in a practical sense it's not clear why you chose to capture the pawn instead of developing your pieces.

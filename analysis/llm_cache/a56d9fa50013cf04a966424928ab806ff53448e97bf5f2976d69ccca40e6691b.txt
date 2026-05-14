@@ -1,1 +1,0 @@
-White's move Kc1 is an inaccuracy as it allows Black to develop their pieces and puts pressure on White's position, while Stockfish recommends developing the queenside with Rxb5.

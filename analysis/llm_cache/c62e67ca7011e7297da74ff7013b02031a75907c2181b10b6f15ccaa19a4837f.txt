@@ -1,0 +1,1 @@
+"CPU's a bloody idiot. Played Nf6 on f6, thinking they're developing their knight. Newsflash: you're not. You've just weakened your pawn structure and given me a free pass to attack. Stockfish says Bxd4 is the way to go, but CPU can't even be bothered to read the manual. Now I'm stuck with a +5.73 eval and a bunch of useless centipawns.

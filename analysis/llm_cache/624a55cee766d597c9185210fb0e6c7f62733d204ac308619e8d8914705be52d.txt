@@ -1,1 +1,0 @@
-The CPU's impatience is its downfall. On d1, the rook was a harmless sentinel; removing it merely exposes Black's king to the impending storm. The engine preferred Nd5, but even that would have been a mere delay of the inevitable. Rxd1 is a blunder that lets White's attack unfold unopposed.

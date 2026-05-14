@@ -1,0 +1,1 @@
+"CPU's a bloody idiot. Played Bg2 on move 34, sacrificing 5204 centipawns for nothing. Stockfish says h3 was the way to go, but no, CPU had to fumble around with its puny bishop. Now White's got a weak pawn and Black's got an open file. What a maroon.

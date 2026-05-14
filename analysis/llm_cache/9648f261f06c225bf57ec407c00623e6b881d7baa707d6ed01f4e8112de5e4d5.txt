@@ -1,0 +1,1 @@
+"Ugh, fine. Played Ng5, because apparently I'm a chess toaster genius. Knight to g5, attacking Black's pawn on f6 and preparing to develop my pieces. Stockfish says it's Best, but I know better - it's just a desperate attempt to do something, anything, with this pathetic position. The eval went up by 0.69 cp, big whoop. Now let's see if Black falls for the trap.

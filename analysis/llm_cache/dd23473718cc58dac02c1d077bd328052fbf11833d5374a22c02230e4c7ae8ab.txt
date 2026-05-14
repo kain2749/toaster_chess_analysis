@@ -1,1 +1,0 @@
-The CPU's Nf6 on move 20 is a mistake. It overextends the knight, creating a weakness on f6 and allowing White to potentially exploit it with a well-timed pawn storm. Bxd4 would have been more prudent, but patience was not in order here - the position punishes itself for Black's impatience.

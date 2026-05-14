@@ -1,1 +1,0 @@
-The CPU's impulsive reach for a rook exchange has led to a precipitous decline in fortunes. The rook on e7 attacks the pawn on d6, but this move is an overreach, as it opens lines for Black's pieces without sufficient compensation. The eval drops by 263 points, and Stockfish would have preferred to play f3, which would have maintained some semblance

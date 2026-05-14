@@ -1,0 +1,1 @@
+CPU's a bloody idiot. Played f3, thinking it's some kind of clever move. Newsflash: it's not. Stockfish says it's a blunder, and I'm inclined to agree. The pawn on e4 is already under attack, and this just weakens the kingside further. What a load of crap. CPU's lost 1437 centipawns because of this moronic move.

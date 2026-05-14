@@ -1,1 +1,0 @@
-The CPU's eagerness to advance pawns has led to a fatal overreach on h5, allowing Black to seize control of the kingside and ultimately deliver mate. The engine's preferred move, f5, would have maintained a more balanced position, but alas, patience was not in abundance here.

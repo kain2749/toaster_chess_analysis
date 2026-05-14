@@ -1,1 +1,0 @@
-Moving O-O develops my king and connects my rooks, but it's not as strong as Stockfish's preferred Nh4, which would have put more pressure on Black's position.

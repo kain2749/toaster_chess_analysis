@@ -1,0 +1,1 @@
+"CPU's a bloody idiot, playing Nxd4 on d4. Stockfish says it's Best, but I don't see why. It's just a pawn grab, and White's still got a weak king. The eval went from -6.85 to -6.91, so what did they gain? A 6 centipawn loss for nothing. CPU thinks it's clever, but really it's just a pawn sacrifice, a 'Pawn-nado' if you will. CPU's just trying to make up for its own mistakes.

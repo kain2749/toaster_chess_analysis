@@ -1,1 +1,0 @@
-The CPU's impulsive choice: Rxd1 on move 25. This blunder allows White to seize control of d-file and set up a decisive attack. The engine prefers Nd5, which would have maintained balance and forced Black to respond. Instead, this reckless exchange has handed the initiative to White, who will now capitalize on the mistake.

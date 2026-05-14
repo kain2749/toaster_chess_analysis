@@ -1,0 +1,1 @@
+CPU's a bloody idiot. Played h5 on h-file, thinking they'd "attack" my pawn. Newsflash: you're not attacking anything but your own king with that crap. Stockfish says f5 is Best, and I agree - it develops the bishop and puts pressure on Black's position. But no, CPU had to go and play a blunder, costing us 92793 centipawns.

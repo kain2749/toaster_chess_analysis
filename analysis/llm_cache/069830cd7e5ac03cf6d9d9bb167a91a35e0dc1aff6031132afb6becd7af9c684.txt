@@ -1,0 +1,1 @@
+"CPU thinks it's a genius, playing Qxe3 to 'attack' my queen on e4. Newsflash: it's just a pawn push. Stockfish says dxe6 is better, but whatever. CPU gets +0.15 centipawns for this move. Great job, computer, you managed to not lose any material.

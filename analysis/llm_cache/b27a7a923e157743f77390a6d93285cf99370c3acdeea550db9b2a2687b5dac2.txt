@@ -1,1 +1,0 @@
-The CPU's eagerness to overextend its pawn on the kingside has led to a blunder of epic proportions. Playing h4 at move 35 allows White to create a weakness on the queenside, where Black's knight is already exerting pressure on d5. The knight on f6 is now forced to respond to this new threat, diverting attention from its more pressing task: defending

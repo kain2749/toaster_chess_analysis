@@ -1,0 +1,1 @@
+"CPU's a bloody idiot. Played Bxe7, sacrificing a pawn to get rid of my queen, but Stockfish says it's a mistake. I'd rather have that pawn than be down 560 centipawns. cxd4 was the obvious choice, but no, CPU had to go and play some fancy nonsense. Now White's in trouble.

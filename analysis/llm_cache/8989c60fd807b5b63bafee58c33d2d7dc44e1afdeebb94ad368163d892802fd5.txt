@@ -1,0 +1,1 @@
+"CPU's a bloody idiot. Played Qh4 on h4, attacking nothing but my pawn on f2. Stockfish says +8.96, but I know better - that's just because it's too lazy to find a real threat. Preferred move was Qg6, but no, CPU had to go and waste 516 centipawns on this nonsense. What a load of crap.

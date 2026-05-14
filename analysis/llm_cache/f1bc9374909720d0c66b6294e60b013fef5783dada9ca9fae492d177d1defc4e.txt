@@ -1,1 +1,0 @@
-The CPU's move Qa4 is a mistake because it weakens White's queenside and allows Black to potentially launch a pawn storm on the kingside, while Stockfish preferred the more solid Qc3.

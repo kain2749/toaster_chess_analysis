@@ -1,0 +1,1 @@
+"CPU's a bloody idiot. Played Rxb2 on b2, sacrificing their queen for no reason. Stockfish says it's a blunder, and I'm not arguing. The eval went from +2.92 to White having mate. What a joke. CPU must've gotten its wires crossed.
