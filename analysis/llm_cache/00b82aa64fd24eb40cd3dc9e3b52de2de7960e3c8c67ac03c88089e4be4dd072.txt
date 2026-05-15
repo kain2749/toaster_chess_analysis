@@ -1,0 +1,1 @@
+CPU (Black) played a blunder with Qf6, which led to White having mate. The engine evaluation before the move was +71.96, but after Qf6, it showed that White has mate. Stockfish preferred d5 as an alternative move, but CPU chose Qf6 instead, resulting in a major eval loss of 92804 centipawns.

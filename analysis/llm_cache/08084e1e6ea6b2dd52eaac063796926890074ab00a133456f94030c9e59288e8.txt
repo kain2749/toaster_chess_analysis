@@ -1,0 +1,1 @@
+CPU (Black) played Kxb7 at move 37, which was a blunder. The engine evaluation dropped from +14.92 to +24.38 after this move. Stockfish preferred Bd2 as an alternative move, but it didn't matter much in the end. CPU (Black) lost 946 centipawns with this move, which is a major eval loss.

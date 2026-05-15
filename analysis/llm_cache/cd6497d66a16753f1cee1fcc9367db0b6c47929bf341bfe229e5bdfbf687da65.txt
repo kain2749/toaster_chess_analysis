@@ -1,0 +1,1 @@
+CPU (Black) played Rxa8 at move 39, which was a blunder. The engine evaluation dropped from +12.13 to +65.97 after this move, resulting in a centipawn loss of 5384. Stockfish preferred the same move, but it's clear that CPU (Black) overreached and failed to punish it. In the end, White won due to Black's blunder, with the mating move being Rxa8+.

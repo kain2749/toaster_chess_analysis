@@ -1,0 +1,1 @@
+You played a8=Q, which was a blunder that cost you 93403 centipawns. Stockfish preferred Ra6+, but you didn't see it. You overreached and failed to punish it, leading to a major eval loss.

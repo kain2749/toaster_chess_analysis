@@ -1,0 +1,1 @@
+You played a game-ending forcing move with Ra1#. It was useful because you were able to force checkmate and win the game. The computer didn't have any other moves left, so it had no choice but to accept the checkmate. You overreached by playing this move, but in the end, it worked out for you.
