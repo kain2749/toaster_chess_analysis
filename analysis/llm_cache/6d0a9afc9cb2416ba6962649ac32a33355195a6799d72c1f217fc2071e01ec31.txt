@@ -1,0 +1,1 @@
+CPU's move Kxc7 was a blunder, giving Black an easy mate. Stockfish preferred c6, but that would have been a waste of time and resources. The CPU overreached by taking the knight on c7, failing to punish it, and ultimately lost the game due to its own stupidity.

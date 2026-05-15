@@ -1,0 +1,1 @@
+You played Kg8 on move 22, which was a mistake. Stockfish preferred Rf6 instead, but you didn't see that coming. Your centipawn loss was 379, so you really overreached here. White had the upper hand in this game, and you failed to punish it. In the end, it was your own stupidity that decided the game.

@@ -1,0 +1,1 @@
+CPU (White) played a blunder with Ke1, losing 3254 centipawns in the process. Stockfish preferred Qf2 instead, but White went for the useless move Ke1. Black failed to punish this major mistake and eventually lost the game. The final mating move was Qh8#.

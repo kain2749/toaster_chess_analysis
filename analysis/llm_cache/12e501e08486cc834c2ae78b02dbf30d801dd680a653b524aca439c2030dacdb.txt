@@ -1,0 +1,1 @@
+CPU (White) played a stupid move with Kxf2 at move 18. It lost significant eval points (-4.49 to -7.84), and Stockfish preferred Rh1 instead. The centipawn loss was 335, which is a lot. This move showed that the CPU didn't know what it was doing in this game.

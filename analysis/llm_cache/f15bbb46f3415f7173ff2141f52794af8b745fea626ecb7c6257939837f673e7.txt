@@ -1,0 +1,1 @@
+You played Qd5# because you were desperate and didn't care about the centipawn loss. It was a game-ending forcing move, but Stockfish preferred Qf1#. You overreached by trying to force a win when there was no need, and White failed to punish it. The final decision of the game was your own stupidity.
