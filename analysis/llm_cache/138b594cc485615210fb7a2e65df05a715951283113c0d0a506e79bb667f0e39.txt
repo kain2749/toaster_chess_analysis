@@ -1,0 +1,1 @@
+CPU (Black) played a blunder with Ka5 at move 44. This move led to a major eval loss of 92173 centipawns and put White in a position to deliver mate. The preferred move for Black was Bxe4, but CPU decided to play Ka5 instead. This overreach by CPU allowed White to capitalize on the mistake and eventually win the game.

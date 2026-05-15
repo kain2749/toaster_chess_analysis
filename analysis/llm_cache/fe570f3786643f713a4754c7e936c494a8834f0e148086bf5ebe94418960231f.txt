@@ -1,0 +1,1 @@
+CPU played a stupid move with d4 at move 15. It lost 345 centipawns and went from +0.24 to +3.69 in evaluation. Stockfish preferred Bg4, but CPU decided to play d4 instead. This was a significant mistake that cost Black dearly.

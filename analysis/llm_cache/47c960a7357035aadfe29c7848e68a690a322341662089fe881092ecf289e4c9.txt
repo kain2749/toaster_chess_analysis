@@ -1,0 +1,1 @@
+CPU (Black) played e4 at move 40, which was a mistake. The engine evaluation dropped from +11 to +16 after this move, and Stockfish preferred Bh3 instead. This cost CPU 542 centipawns. It's like the computer decided to throw away its advantage just because it could.

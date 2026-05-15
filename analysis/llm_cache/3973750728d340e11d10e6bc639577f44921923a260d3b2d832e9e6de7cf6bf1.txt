@@ -1,0 +1,1 @@
+You played Bd4+ at move 43, which was a blunder. The engine evaluation dropped from +66.14 to +58.98 after this move. Stockfish preferred a7 instead, but it didn't matter because you were already in deep shit. You lost 716 centipawns with that stupid move.

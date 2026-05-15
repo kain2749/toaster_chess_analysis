@@ -1,0 +1,1 @@
+CPU (Black) played a blunder with Bc6 at move 41, losing 2936 centipawns in the process. Stockfish preferred a different move, but Bc6 was still useful for some reason. It's like playing chess while being drunk and high - you might make a few good moves, but overall, it's just a mess.
