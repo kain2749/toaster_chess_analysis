@@ -8,7 +8,7 @@ This repo exists because I wanted my phone chess games to get roasted automatica
 
 It has now become infrastructure. Obviously. Because apparently exporting a chess game from a phone required a local LLM, Stockfish, MariaDB, systemd, KDE Connect, GitHub, and a GNOME status line that tattles on VRAM.
 
-MariaDB's password in this project is password. This is not best security practice. Do not do as I have done.
+MariaDB's password in this project is password. This is not best security practice. Do not do as I have done. There shouldn't be any spots where this says /usr/bin/python3, I think I caught all of them and changed them to be /usr/bin/python. This is a reminder to sudo apt install or whatever your package manager of choice is, [python-is-python3](https://packages.debian.org/sid/python-is-python3). If I can move off of 2.7.10, you can too. I believe in you.
 
 ## What This Does
 
