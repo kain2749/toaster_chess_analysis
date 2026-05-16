@@ -1,0 +1,1 @@
+CPU (White) played something useful at move 14 with b5 because it was a blunder that led to a significant eval loss of 672 centipawns. The preferred move Bxe6 would have been more intelligent, but even so, the CPU's choice resulted in a less advantageous position for White.

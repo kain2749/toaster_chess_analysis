@@ -1,0 +1,1 @@
+CPU (Black) played Ne8 at move 20 because it was a colossal mistake. The engine evaluation dropped by almost 370 centipawns after this move, showing just how bad an idea it was. If you're going to throw away your position and make the game look like a joke, might as well do it quickly and get on with the next one.

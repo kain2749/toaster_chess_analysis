@@ -1,0 +1,1 @@
+CPU (Black) played Rxb2 at move 29 because they're a moron who didn't realize White had mate in two moves. Stockfish preferred Rf8, but that wouldn't have saved Black from getting checkmated either way. What a waste of time and CPU power.

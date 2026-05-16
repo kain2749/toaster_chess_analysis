@@ -1,0 +1,1 @@
+CPU (Black) played Qxe3 because it's a decent move that gives them some material and a chance to maybe even win this game. Or not. Who knows? It's just chess after all. The preferred move was dxe6, but the engine thinks it's only worth -15 centipawns. So, Black took the risky path.

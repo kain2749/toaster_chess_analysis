@@ -1,0 +1,1 @@
+CPU (Black) played a4 at move 10 because they were trying to do something useful but ended up making a mistake. Their eval dropped by 452 centipawns, which is significant. The preferred move was Nbd7, indicating that there might have been better options available.

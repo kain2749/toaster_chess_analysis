@@ -1,0 +1,1 @@
+CPU (Black) played Rxa8 at move 39 because it's a blunder that leads to an immediate mate. Stockfish preferred d5, but you're not gonna find your king on d5 when you're about to get checkmated by a pawn. Major eval loss.

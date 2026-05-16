@@ -1,0 +1,1 @@
+CPU (Black) played Qxc2 at move 24 because they're a moron who didn't realize White had mate in two moves. Stockfish preferred Qf5, but that wouldn't have saved Black from getting checkmated either way. What a waste of time and CPU power.

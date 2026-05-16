@@ -1,0 +1,1 @@
+CPU (Black) played something useful at move 43 with Kb4, but it's a bloody blunder! The engine evaluates +67.16 before and only +25.09 after this move. Stockfish prefers Ke8+ instead, leading to a centipawn loss of 4207. It's like Black decided to throw away a winning position for no reason at all.

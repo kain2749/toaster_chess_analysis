@@ -1,0 +1,1 @@
+You played Nd2+ at move 22 and it was a blunder. Stockfish preferred Rxe4 instead, which would have gained you an extra pawn. Your eval loss of 689 centipawns is major. You're playing like a noob who doesn't know how to play chess.

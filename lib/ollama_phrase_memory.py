@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 import mysql.connector
@@ -20,18 +19,18 @@ class MysqlConfig:
     host: str = os.getenv("TOASTER_MYSQL_HOST", "127.0.0.1")
     port: int = int(os.getenv("TOASTER_MYSQL_PORT", "3306"))
     user: str = os.getenv("TOASTER_MYSQL_USER", "toaster")
-    password: str = os.getenv("TOASTER_MYSQL_PASSWORD", "")
+    password: str = os.getenv("TOASTER_MYSQL_PASSWORD", "pick-a-real-password")
     database: str = os.getenv("TOASTER_MYSQL_DATABASE", DEFAULT_DB_NAME)
 
 
 class OllamaPhraseMemory:
     """
-    Small MySQL-backed memory for reducing Ollama repetition.
+    Small MySQL/MariaDB-backed memory for reducing Ollama repetition.
 
     Design:
     - Move notes are scoped to one game_id.
     - Game summaries are global across all games.
-    - This does NOT store engine truth. Only text Ollama already wrote.
+    - This stores only language Ollama already emitted. It is not engine truth.
     """
 
     def __init__(self, cfg: Optional[MysqlConfig] = None) -> None:
@@ -57,10 +56,7 @@ class OllamaPhraseMemory:
         )
 
     def init_db(self) -> None:
-        """
-        Creates database and tables if missing.
-        Safe to call at script startup.
-        """
+        """Create database and tables if missing. Safe to call at startup."""
         with self._connect_server() as conn:
             cur = conn.cursor()
             cur.execute(
@@ -119,10 +115,7 @@ class OllamaPhraseMemory:
 
     @staticmethod
     def game_id_from_pgn_text(clean_pgn: str) -> str:
-        """
-        Stable game ID from clean PGN.
-        Good enough for this pipeline.
-        """
+        """Stable game ID from clean PGN."""
         return hashlib.sha256(clean_pgn.encode("utf-8")).hexdigest()[:32]
 
     @staticmethod
@@ -198,11 +191,11 @@ class OllamaPhraseMemory:
         limit: int = 8,
     ) -> list[str]:
         """
-        Pulls only notes from this same game.
+        Pull only notes from this same game.
 
-        Optional filters help avoid giving irrelevant phrases:
+        Optional filters help avoid irrelevant phrasing:
         - same label: Blunder/Mistake/etc.
-        - same actor prefix: "You" or "CPU"
+        - same actor prefix: You/CPU
         """
         where = ["game_id = %s"]
         params: list[object] = [game_id]
@@ -232,10 +225,7 @@ class OllamaPhraseMemory:
             return [row[0] for row in cur.fetchall()]
 
     def recent_game_summaries(self, *, limit: int = 12) -> list[str]:
-        """
-        Pulls global prior summaries across all games.
-        This is for the game-story prompt only.
-        """
+        """Pull global prior summaries across all games."""
         with self._connect_db() as conn:
             cur = conn.cursor()
             cur.execute(

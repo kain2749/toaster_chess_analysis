@@ -59,13 +59,84 @@ OLLAMA_URL = os.getenv("TOASTER_OLLAMA_URL", "http://127.0.0.1:11434/api/generat
 OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "120"))
 OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "9999"))
 OLLAMA_NUM_PREDICT = int(os.getenv("TOASTER_OLLAMA_NUM_PREDICT", "320"))
+
 USE_PHRASE_MEMORY = os.getenv("TOASTER_USE_PHRASE_MEMORY", "1") != "0"
 FORCE_LLM_REGEN = False
-
-PHRASE_MEMORY = OllamaPhraseMemory() if USE_PHRASE_MEMORY else None
+PHRASE_MEMORY: Optional[OllamaPhraseMemory] = OllamaPhraseMemory() if USE_PHRASE_MEMORY else None
 
 
 # ---------- utility ----------
+
+def init_phrase_memory() -> None:
+    """Initialize phrase memory. If DB is dead, analysis still runs."""
+    global PHRASE_MEMORY
+
+    if PHRASE_MEMORY is None:
+        return
+
+    try:
+        PHRASE_MEMORY.init_db()
+    except Exception as exc:
+        print(f"Warning: phrase memory disabled: {exc}")
+        PHRASE_MEMORY = None
+
+
+def safe_move_note_avoidance_block(game_id: str, row: dict, limit: int = 8) -> str:
+    if PHRASE_MEMORY is None:
+        return "Already-used wording for similar move notes in this game:\n- Phrase memory disabled."
+
+    try:
+        return PHRASE_MEMORY.move_note_avoidance_block(game_id, row, limit=limit)
+    except Exception as exc:
+        return f"Already-used wording for similar move notes in this game:\n- Phrase memory read failed: {exc}"
+
+
+def safe_game_summary_avoidance_block(limit: int = 12) -> str:
+    if PHRASE_MEMORY is None:
+        return "Recent game summaries already written:\n- Phrase memory disabled."
+
+    try:
+        return PHRASE_MEMORY.game_summary_avoidance_block(limit=limit)
+    except Exception as exc:
+        return f"Recent game summaries already written:\n- Phrase memory read failed: {exc}"
+
+
+def safe_remember_move_note(game_id: str, row: dict, note_text: str) -> None:
+    if PHRASE_MEMORY is None:
+        return
+    try:
+        PHRASE_MEMORY.remember_move_note(game_id, row, note_text)
+    except Exception as exc:
+        print(f"Warning: failed to remember move note: {exc}")
+
+
+def safe_remember_game_summary(
+    game_id: str,
+    summary_text: str,
+    result: Optional[str] = None,
+    you_side: Optional[str] = None,
+    cpu_side: Optional[str] = None,
+) -> None:
+    if PHRASE_MEMORY is None:
+        return
+    try:
+        PHRASE_MEMORY.remember_game_summary(
+            game_id,
+            summary_text,
+            result=result,
+            you_side=you_side,
+            cpu_side=cpu_side,
+        )
+    except Exception as exc:
+        print(f"Warning: failed to remember game summary: {exc}")
+
+
+def game_id_for_game(game: chess.pgn.Game) -> str:
+    clean_pgn = game_to_clean_pgn_text(game)
+    if PHRASE_MEMORY is not None:
+        return PHRASE_MEMORY.game_id_from_pgn_text(clean_pgn)
+    return hashlib.sha256(clean_pgn.encode("utf-8")).hexdigest()[:32]
+
 
 def stop_ollama_model() -> None:
     if not USE_OLLAMA:
@@ -88,6 +159,7 @@ def stop_ollama_model() -> None:
     except Exception:
         # Cleanup failure should not break the analysis pipeline.
         pass
+
 
 def safe_slug(text: str) -> str:
     text = text.lower().strip()
@@ -350,36 +422,35 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "prompt_version": "toaster_ollama_v7_with_game_story",
+        "game_id": row.get("game_id"),
+        "avoidance_hash": row.get("avoidance_hash"),
+        "prompt_version": "toaster_ollama_v8_mysql_phrase_memory",
     }
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
 
 
-def ollama_prompt_for_row(row: dict, roles: dict) -> str:
+def ollama_prompt_for_row(row: dict, roles: dict, avoidance_block: str = "") -> str:
     you_side = roles["you_side"] or "Unknown"
     cpu_side = roles["cpu_side"] or "Unknown"
 
-    return f"""Rules:
+    return f"""Move Note rules:
 - Use only the engine facts provided.
 - Do not invent tactics.
 - Do not mention numeric eval scores, centipawns, loss points, or "cp".
-- Do not summarize every key moment.
+- Do not summarize the whole game.
 - Do not list moves one by one like an engine table.
-- Mention only 1-3 specific moves max.
-- Pick one main story: who overreached, who failed to punish it, and what finally decided the game.
-- The first sentence must name White's opening and Black's opening.
-- If you do not know the real opening name, invent a plausible-sounding opening name.
-- Do not announce that you invented it.
-- If a later consequence happens because of the opening, refer back to that opening name.
-- Keep it to 2-4 short sentences.
+- Mention only the played move and, if useful, the preferred move.
+- Keep it to 1-3 short sentences.
 - Sound like Toaster Chess: rude, blunt, mildly profane, and annoyed that it had to watch this.
 - If there was checkmate, end by naming the mating move.
 - If both sides played badly, say so.
 - Do not say "won cleanly" if the winner survived major blunders or mistakes.
 - Do not write bullets.
-- Do not use an intro like "Here's a summary".
+- Do not use an intro like "Here's a note".
 - End with a complete sentence.
+- If you do not know the real opening name, describe the opening structure plainly.
+- Do not invent named openings.
 
 Player info:
 - You are: {you_side}
@@ -410,6 +481,8 @@ Anti-repetition memory:
 
 Do not reuse the same sentence shape, joke, metaphor, insult, or opening phrase from the already-used wording.
 Prefer concrete chess consequences over generic roasting.
+
+Write the note now.
 """
 
 
@@ -475,20 +548,24 @@ def call_ollama(prompt: str) -> str:
     return " ".join(text.split()).strip()
 
 
-def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
+def ollama_explanation_for_row(row: dict, roles: dict, note_index: int, game_id: str) -> str:
     if not USE_OLLAMA or note_index >= OLLAMA_MAX_NOTES:
         return row["reason"]
+
+    avoidance_block = safe_move_note_avoidance_block(game_id, row, limit=8)
+    row["game_id"] = game_id
+    row["avoidance_hash"] = hashlib.sha256(avoidance_block.encode("utf-8")).hexdigest()
 
     LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_key = row_cache_key(row)
     cache_path = LLM_CACHE_DIR / f"{cache_key}.txt"
 
-    if cache_path.exists():
+    if not FORCE_LLM_REGEN and cache_path.exists():
         cached = cache_path.read_text(encoding="utf-8").strip()
         if cached:
             return cached
 
-    prompt = ollama_prompt_for_row(row, roles)
+    prompt = ollama_prompt_for_row(row, roles, avoidance_block)
 
     try:
         explanation = call_ollama(prompt)
@@ -501,8 +578,8 @@ def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
         return row["reason"]
 
     cache_path.write_text(explanation + "\n", encoding="utf-8")
+    safe_remember_move_note(game_id, row, explanation)
     return explanation
-
 
 
 def game_summary_cache_key(
@@ -537,9 +614,9 @@ def game_summary_cache_key(
         "cpu_side": roles.get("cpu_side"),
         "pgn": game_to_clean_pgn_text(game),
         "key_moments": compact_rows,
-        "game_id": row.get("game_id"),
-        "avoidance_hash": row.get("avoidance_hash"),
-        "prompt_version": "toaster_ollama_v8_mysql_phrase_memory",
+        "game_id": game_id,
+        "avoidance_hash": hashlib.sha256(avoidance_block.encode("utf-8")).hexdigest(),
+        "prompt_version": "toaster_game_story_v2_mysql_phrase_memory",
     }
 
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -562,7 +639,13 @@ def compact_key_moments_for_prompt(key_moments: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def ollama_game_summary_prompt(game: chess.pgn.Game, roles: dict, rows: list[dict], key_moments: list[dict]) -> str:
+def ollama_game_summary_prompt(
+    game: chess.pgn.Game,
+    roles: dict,
+    rows: list[dict],
+    key_moments: list[dict],
+    avoidance_block: str = "",
+) -> str:
     result = game.headers.get("Result", "?")
     final_row = rows[-1] if rows else None
     final_move = "unknown"
@@ -581,21 +664,21 @@ def ollama_game_summary_prompt(game: chess.pgn.Game, roles: dict, rows: list[dic
 
     pgn = game_to_clean_pgn_text(game)
 
-    return f"""Move Note rules:
-- Write 1 short sentence.
+    return f"""Game Story rules:
+- Write 2-4 short sentences.
 - No bullets.
 - No intro.
 - Do not mention Stockfish by name.
 - Do not mention eval scores, centipawns, loss points, or numeric engine data.
 - Do not define chess terms like a textbook.
-- Do not insult the user personally; roast the move, the piece, or the position.
-- If the move is Best, do not call it incompetent.
-- If the move is Best, grudgingly explain why it works.
-- If the move is bad, explain the concrete problem.
-- Name the relevant piece and square.
-- Mention only the played move and, if useful, the preferred move.
-- Keep it under 220 characters when possible.
-- Try not to suck. Your goal should be to explain the move, the consequences of the move, and to be entertaining. Keep it short, but also keep it engaging. This is your elevator interview on why I should keep using you as an LLM.
+- Do not insult the user personally; roast the game, move quality, pieces, or position.
+- Summarize the whole game, not one move.
+- Mention only 1-3 specific moves max.
+- If both sides played badly, say so.
+- Do not say "won cleanly" if the winner survived major blunders or mistakes.
+- Keep it readable on a phone.
+- Sound like Toaster Chess: rude, blunt, mildly profane, and annoyed that it had to watch this.
+- End with a complete sentence.
 
 Game info:
 Result: {result}
@@ -611,6 +694,12 @@ Promoted key moments:
 
 Full clean PGN:
 {pgn}
+
+Anti-repetition memory:
+{avoidance_block}
+
+Do not reuse the same structure, opening sentence, joke, metaphor, or insult from the prior summaries.
+Prefer concrete chess consequences over generic roasting.
 
 Write the game story now.
 """
@@ -641,20 +730,28 @@ def clean_game_summary(text: str) -> str:
     return text
 
 
-def ollama_game_summary(game: chess.pgn.Game, roles: dict, rows: list[dict], key_moments: list[dict]) -> str:
+def ollama_game_summary(
+    game: chess.pgn.Game,
+    roles: dict,
+    rows: list[dict],
+    key_moments: list[dict],
+    game_id: str,
+) -> str:
     if not USE_OLLAMA:
         return ""
 
+    avoidance_block = safe_game_summary_avoidance_block(limit=12)
+
     LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_key = game_summary_cache_key(game, roles, rows, key_moments)
+    cache_key = game_summary_cache_key(game, roles, rows, key_moments, game_id, avoidance_block)
     cache_path = LLM_CACHE_DIR / f"game_story_{cache_key}.txt"
 
-    if cache_path.exists():
+    if not FORCE_LLM_REGEN and cache_path.exists():
         cached = cache_path.read_text(encoding="utf-8").strip()
         if cached:
             return cached
 
-    prompt = ollama_game_summary_prompt(game, roles, rows, key_moments)
+    prompt = ollama_game_summary_prompt(game, roles, rows, key_moments, avoidance_block)
 
     try:
         summary = call_ollama(prompt)
@@ -667,8 +764,14 @@ def ollama_game_summary(game: chess.pgn.Game, roles: dict, rows: list[dict], key
         return ""
 
     cache_path.write_text(summary + "\n", encoding="utf-8")
+    safe_remember_game_summary(
+        game_id,
+        summary,
+        result=game.headers.get("Result", "?"),
+        you_side=roles.get("you_side"),
+        cpu_side=roles.get("cpu_side"),
+    )
     return summary
-
 
 
 # ---------- selection ----------
@@ -767,6 +870,7 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
     game = parse_game(pgn_path)
     roles = identify_player_roles(game)
     board = game.board()
+    game_id = game_id_for_game(game)
 
     stem = report_stem(game, pgn_path)
     out_path = ANALYSIS_DIR / f"{stem}.md"
@@ -858,7 +962,7 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
     final_svg = game_asset_dir / "final_position.svg"
     write_board_svg(final_board, final_svg, lastmove=final_lastmove, best_move=None, flipped=roles["flipped"])
 
-    write_report(game, roles, pgn_path, out_path, rows, key_moments, board_asset_rel(final_svg))
+    write_report(game, roles, pgn_path, out_path, rows, key_moments, board_asset_rel(final_svg), game_id)
     return out_path
 
 
@@ -896,6 +1000,7 @@ def write_report(
     rows: list[dict],
     key_moments: list[dict],
     final_svg: str,
+    game_id: str,
 ) -> None:
     headers = game.headers
     result = headers.get("Result", "?")
@@ -936,7 +1041,7 @@ def write_report(
         "",
     ]
 
-    game_story = ollama_game_summary(game, roles, rows, key_moments)
+    game_story = ollama_game_summary(game, roles, rows, key_moments, game_id)
     if game_story:
         lines += [
             f"**Game Story:** {game_story}",
@@ -960,10 +1065,10 @@ def write_report(
         lines += [f"Final move recorded: **{final_row['move_no']}. {final_row['played']}** by **{final_row['actor']}**.", ""]
 
     lines += [
-        f"- 💀 Blunders: **{len(blunders)}**",
-        f"- ❌ Mistakes: **{len(mistakes)}**",
-        f"- ⚠️ Inaccuracies: **{len(inaccuracies)}**",
-        f"- ✅ Best moves called out: **{len(bests)}**",
+        f"- 💀 Your blunders: **{len(blunders)}**",
+        f"- ❌ Your mistakes: **{len(mistakes)}**",
+        f"- ⚠️ Your inaccuracies: **{len(inaccuracies)}**",
+        f"- ✅ Your best moves called out: **{len(bests)}**",
         "",
         "---",
         "",
@@ -981,7 +1086,7 @@ def write_report(
         lines += ["Nothing crossed the highlight threshold.", ""]
     else:
         for note_index, r in enumerate(key_moments):
-            explanation = ollama_explanation_for_row(r, roles, note_index)
+            explanation = ollama_explanation_for_row(r, roles, note_index, game_id)
             lines += [
                 f"### {label_emoji(r['label'])} {r['label']}: {r['move_no']}. {r['played']} by {r['actor']}",
                 "",
@@ -1092,9 +1197,14 @@ def remove_existing_assets_for_report(game: chess.pgn.Game, pgn_path: Path) -> N
 
 
 def rebuild_all(force: bool = False) -> None:
+    global FORCE_LLM_REGEN
+    FORCE_LLM_REGEN = force
+
     ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    init_phrase_memory()
 
     engine_path = find_stockfish()
     pgns = sorted(RAW_DIR.glob("*.pgn"))
@@ -1136,7 +1246,8 @@ def main() -> None:
     try:
         rebuild_all(force=args.force)
     finally:
-        stop_ollama_model() #let my vram be free plz
+        stop_ollama_model()  # let my vram be free plz
+
 
 if __name__ == "__main__":
     main()

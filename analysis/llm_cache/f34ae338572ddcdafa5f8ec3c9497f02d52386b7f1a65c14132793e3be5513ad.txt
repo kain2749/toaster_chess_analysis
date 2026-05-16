@@ -1,0 +1,1 @@
+You (Black) played something useful at move 50 with Qd5#. It's a game-ending forcing move, and it was your only option after Stockfish decided that Black has mate. The preferred move for White would have been Qf1#, but you don't care about their preferences right now. You just checkmated them.

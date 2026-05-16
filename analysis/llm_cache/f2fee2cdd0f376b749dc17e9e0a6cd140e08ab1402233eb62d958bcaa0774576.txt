@@ -1,0 +1,1 @@
+CPU (White) played Ke2 at move 17 because it was a mistake. The engine evaluation dropped significantly by playing this move, losing 313 centipawns in the process. The preferred move for White was Qd5, which would have been more useful. But hey, maybe they're just trying to make you feel better about your own moves?

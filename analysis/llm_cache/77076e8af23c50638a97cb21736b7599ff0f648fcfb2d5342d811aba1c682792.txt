@@ -1,0 +1,1 @@
+You (White) played something stupid at move 39 with a8=Q. Stockfish said it's worth -66.71 points, which is a major eval loss. If you were hoping to save your king from that checkmate threat, you just made it worse for yourself. You should have listened to the computer and played Ra6+ instead. Now you can only watch as Black delivers the final blow with Qa2#.

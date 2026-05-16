@@ -1,0 +1,1 @@
+You (Black) played g5 at move 39 and it was a blunder. The computer (White) immediately responded with Qxb4, which is a better move that you overlooked. This led to a major eval loss of -1026 points for Black. It's like playing chess while wearing oven mittens and expecting not to burn yourself.

@@ -1,0 +1,1 @@
+CPU (Black) played something useful at move 42 with Kc5, but it's a bloody blunder! The engine evaluates +63.37 before and only +56.85 after this move. Stockfish prefers Ke6+ instead, leading to a centipawn loss of 1059. It's like Black decided to throw away a winning position for no reason at all.

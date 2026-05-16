@@ -1,0 +1,1 @@
+You (White) played Nxe7 because you're too dumb to realize it doesn't matter if Black can recapture with a pawn or not, as long as you get that darned knight off your king! Stockfish was like "duh" and gave you +1.58 eval after the move but hey, at least now we have some funky-looking structure here to play around with.

@@ -1,0 +1,1 @@
+CPU (White) played something stupid at move 31 with Nc1. The engine's preferred move was Qe1, but this is a major eval loss for White. CPU (White) might as well have just thrown their pieces into a blender and hit "puree.

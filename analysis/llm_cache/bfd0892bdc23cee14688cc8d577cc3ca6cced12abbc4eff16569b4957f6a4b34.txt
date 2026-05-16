@@ -1,0 +1,1 @@
+CPU (Black) played something useful at move 41 with Bc6, but it's a bloody blunder! The engine evaluates +27.15 before and only +58.41 after this move. Stockfish prefers e3+ instead, leading to a centipawn loss of 3126. It's like Black decided to throw away a winning position for no reason at all.

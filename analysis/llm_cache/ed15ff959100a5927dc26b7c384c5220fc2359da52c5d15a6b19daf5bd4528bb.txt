@@ -1,0 +1,1 @@
+You (Black) played something stupid at move 36 with bxc3. You were supposed to play Nd7, but instead you did this. The engine says it's a major eval loss of 5966 centipawns. What the hell is wrong with you?

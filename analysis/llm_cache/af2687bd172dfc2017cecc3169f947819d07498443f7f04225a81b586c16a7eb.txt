@@ -1,0 +1,1 @@
+CPU (Black) played Qh4 at move 9, which was a mistake. The engine preferred Qg6 but went with Qh4 instead. This led to an eval loss of 516 centipawns. It's like Black decided to smack itself in the face with a frying pan just because it could.

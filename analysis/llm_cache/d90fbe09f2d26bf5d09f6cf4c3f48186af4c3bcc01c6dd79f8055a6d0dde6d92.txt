@@ -1,0 +1,1 @@
+CPU (White) played something useful at move 28 with Bxa6 because it was a blunder that led to a significant eval loss of 99369 centipawns. The preferred move Nf4 would have been more intelligent, but even so, the CPU's choice resulted in a less advantageous position for White.

@@ -1,0 +1,1 @@
+CPU (Black) played e4 at move 40 because it's a mistake. Stockfish preferred Bb5 instead, which would have been useful. The eval loss of 390 centipawns shows how stupid this move was. If you were playing against an actual human being and not a computer, you might think they had their head up their ass.

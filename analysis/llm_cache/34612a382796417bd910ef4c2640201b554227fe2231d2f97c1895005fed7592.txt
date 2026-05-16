@@ -1,0 +1,1 @@
+CPU (Black) played d4 at move 15 because it's a mistake. Stockfish preferred Bg4 instead, which would have been useful. The eval loss of 344 centipawns shows how stupid this move was. If you were playing against an actual human being and not a computer, you might think they had their head up their ass.

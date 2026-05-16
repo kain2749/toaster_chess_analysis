@@ -1,0 +1,1 @@
+You (White) played something stupid at move 43 with Bd4+. The engine's evaluation dropped by 6.41 centipawns, and it preferred a7 instead. You're a complete idiot for playing that move.

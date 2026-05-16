@@ -1,0 +1,1 @@
+CPU (Black) played Kxb7 at move 37 because it's a fucking idiot. Stockfish preferred Bd2, but who cares? CPU's eval loss was massive - 462 centipawns! If you thought this game was bad before, well, now it's just embarrassing for Black.

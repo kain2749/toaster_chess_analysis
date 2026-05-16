@@ -1,0 +1,1 @@
+CPU (White) played g3 at move 8 because they were too stupid to see the Qxf5 checkmate threat on h2, and instead chose to sacrifice a pawn for nothing in return. The eval dropped by almost 490 centipawns, which is like losing half a game! They're so dumb it hurts.

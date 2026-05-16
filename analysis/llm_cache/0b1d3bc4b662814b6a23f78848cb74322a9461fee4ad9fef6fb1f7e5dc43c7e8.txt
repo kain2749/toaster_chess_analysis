@@ -1,0 +1,1 @@
+You (Black) played something useful at move 10 with Bg4. The engine thinks it's a mistake because your eval dropped significantly and you almost lost on time. If only you had played Rd8 instead, you might have won cleanly. But alas, you didn't, so now you're just wasting my time.

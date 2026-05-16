@@ -1,0 +1,1 @@
+You (White): Bg5 Label: Mistake Engine facts: Eval before +4.10; after +0.13; preferred Ng5; centipawn loss 397. You're a dumbass, White! Playing Bg5 when Stockfish clearly prefers Ng5 is like trying to solve a Rubik's Cube with your feet. You lost 4 points of eval and almost 400 centipawns in one move. Just do better next time, you idiot.

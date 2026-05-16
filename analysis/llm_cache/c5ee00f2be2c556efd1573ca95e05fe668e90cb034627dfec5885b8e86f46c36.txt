@@ -1,0 +1,1 @@
+You played Nc4, you stupid monkey. You're trying to hold on to your pieces and avoid getting crushed by White's superior position. It ain't gonna work, but hey, at least it shows some effort. Stockfish says this is a good move for you right now. So there's that. Engine facts: Eval before: -1.50 Eval after: -1.

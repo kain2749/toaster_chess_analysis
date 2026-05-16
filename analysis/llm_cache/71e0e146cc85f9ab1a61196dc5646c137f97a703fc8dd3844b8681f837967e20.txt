@@ -1,0 +1,1 @@
+CPU (Black) played Nf6 at move 20 because they're an idiot who doesn't know how to play chess, and it cost them a significant eval loss of 538 centipawns. Stockfish preferred Bxd4 as the better move for Black, but CPU decided to make a bad choice instead.

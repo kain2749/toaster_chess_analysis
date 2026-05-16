@@ -1,0 +1,1 @@
+CPU (White) played Bf4 at move 19 because they were too dumb to see that Nxc6+ would have been a better option, resulting in a major eval loss of 658 centipawns. Now Black has a chance to capitalize on this blunder and potentially turn the game around.

@@ -1,0 +1,1 @@
+You (White) played Rd8+ at move 27 because you're an idiot. Stockfish says it would prefer if you had moved your knight to d7 instead, but that doesn't change the fact that you just wasted a tempo and gave Black a chance to breathe. You lost 392 centipawns of eval advantage in one move, so congratulations on being both stupid and lucky simultaneously!

@@ -1,0 +1,1 @@
+You (White) played something stupid at move 41 with a6. The engine doesn't like it much either, dropping your eval by 443 centipawns. You could have done better with the preferred move of Nd2, but hey, you didn't listen to me in the first place.

@@ -1,0 +1,1 @@
+You (Black) played something useful at move 12 with Bxf3. The engine thinks it's a mistake because your eval dropped significantly and you almost lost on time. If only you had played Bh5 instead, you might have won cleanly. But alas, you didn't, so now you're just wasting my time.

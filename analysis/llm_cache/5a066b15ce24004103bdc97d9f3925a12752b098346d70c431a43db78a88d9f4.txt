@@ -1,0 +1,1 @@
+CPU (White) played Kf3 at move 20 because they're trying to make you feel better about your own moves, but it was a mistake. The engine evaluation dropped significantly by playing this move, losing 370 centipawns in the process. The preferred move for White was Rd5, which would have been more useful.

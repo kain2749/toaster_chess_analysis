@@ -1,0 +1,1 @@
+CPU (Black) played Bxa2 at move 35 because they wanted to see how much of a moron they could be. Stockfish preferred a3, but who cares about that? With a major eval loss of 96,922 centipawns, it's clear that Black thought their knight was the key to winning this game. Little did they know, White had them by the balls with mate on the horizon.

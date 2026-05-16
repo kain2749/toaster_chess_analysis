@@ -1,0 +1,1 @@
+CPU (White) played Bg2 at move 34 because they were too dumb to see that h3 would have been a better option, resulting in a major eval loss of 5204 centipawns. Now Black has a chance to capitalize on this blunder and potentially turn the game around.

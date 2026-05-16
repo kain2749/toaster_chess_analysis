@@ -1,0 +1,1 @@
+Black played Bh1 at move 41, which was a mistake. The engine preferred a5 but went with Bh1 instead. This led to an eval loss of 300 centipawns. It's like Black decided to smack itself in the face with a frying pan just because it could.

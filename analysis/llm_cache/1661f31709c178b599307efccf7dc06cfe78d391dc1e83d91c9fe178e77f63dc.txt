@@ -1,0 +1,1 @@
+White played g4 because they're an idiot who doesn't know how to play chess. The computer is so dumb it loses 645 centipawns. Stockfish knew Qd3 was better, but White didn't listen. This move led to a major eval loss for White. If you want to see how bad this move is, just look at the numbers: -2.38 before g4 and -8.83 after it. That's a lot of points lost in one turn.

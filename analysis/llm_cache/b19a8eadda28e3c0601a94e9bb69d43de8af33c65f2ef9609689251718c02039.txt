@@ -1,0 +1,1 @@
+CPU (Black) played Rxd1 at move 25 because it was too stupid to understand that Nd5 would have been a much better option, losing only 98593 centipawns in evaluation and not giving White an immediate mate. This is just another example of why the CPU is so annoying to play against.
