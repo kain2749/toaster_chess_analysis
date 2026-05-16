@@ -1,0 +1,1 @@
+CPU played g3 like a dumbass at move 8, losing 492 centipawns in the process and giving Black an opening to strike back. Stockfish preferred Qxf5 as an alternative move, but the computer decided to stick with its own retardation for some reason.

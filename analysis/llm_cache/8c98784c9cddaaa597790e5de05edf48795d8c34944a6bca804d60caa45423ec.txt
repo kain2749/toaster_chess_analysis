@@ -1,0 +1,1 @@
+CPU (White) played something extremely stupid at move 30 with Qd2. This move loses major eval value and is a blunder of epic proportions. It's like playing chess on an ice rink without skates, or worse yet, trying to play chess blindfolded while juggling flaming torches. The preferred move was Qb2 which would have been useful as it doesn't make the CPU look like a complete idiot.

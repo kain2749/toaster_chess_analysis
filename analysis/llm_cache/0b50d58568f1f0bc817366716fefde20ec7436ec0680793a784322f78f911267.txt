@@ -1,0 +1,1 @@
+CPU (White) played Qxb7 at move 22 because it was a blunder of epic proportions. Stockfish's preferred move, if White had any brains left, would have been to play Qd1 instead. The eval loss after this move is so massive that Black has mate on the board now. So much for using your brain, CPU (White).

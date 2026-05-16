@@ -1,0 +1,1 @@
+You (White) won against CPU (Black) with a clean checkmate at move 39, Rhxg8#. The worst user move was Qf3 at move 21, and the best moves were c4 at move 9, Nc4 at move 11, exd4 at move 31, and exd4 at move 32. CPU (Black) made a blunder with Bxa2 at move 35, missing an easy win for White. The game was full of mistakes by both sides, but you managed to pull through in the end.

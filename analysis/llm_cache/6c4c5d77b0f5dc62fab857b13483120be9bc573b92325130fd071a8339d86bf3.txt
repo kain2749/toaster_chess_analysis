@@ -1,0 +1,1 @@
+You (White): "What the fudge are you doing? Nc4 is a move that even an amateur would find questionable. It's like playing chess with a blindfold on, but somehow managing to land your knight in the most awkward position possible." Fallback explanation: At or very near Stockfish's preferred move.

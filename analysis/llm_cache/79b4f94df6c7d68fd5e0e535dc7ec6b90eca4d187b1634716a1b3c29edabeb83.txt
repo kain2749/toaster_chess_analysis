@@ -1,0 +1,1 @@
+CPU (White) played g4 at move 9 because it was a major eval loss. It would have been better to play Qd3 instead, but no one asked them about their preferences. This is just another example of why computers should not be trusted with chess decisions - they're as dumb as rocks most of the time.

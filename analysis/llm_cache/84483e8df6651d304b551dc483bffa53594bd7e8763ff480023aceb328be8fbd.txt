@@ -1,0 +1,1 @@
+CPU (White) played Rxd2 at move 23 because it was a major eval loss. It would have been better to play Ke2 instead, but no one asked them about their preferences. This is just another example of why computers should not be trusted with chess decisions - they're as dumb as rocks most of the time.

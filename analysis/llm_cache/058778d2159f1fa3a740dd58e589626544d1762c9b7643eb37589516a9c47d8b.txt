@@ -1,0 +1,1 @@
+CPU (Black) took a major hit on move 29 with Rxb2, losing 99708 centipawns and giving White mate. The preferred move was Rf8, but this CPU is so dumb it doesn't even know how to protect its own king when it matters most.

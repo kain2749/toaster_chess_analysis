@@ -1,0 +1,1 @@
+CPU (Black) played exd4 at move 31 because it's a dumb move in this position. It doesn't even have the balls to take your knight with its bishop, so it decides to trade pawns instead. But hey, at least it's not completely clueless and is sticking to engine-approved moves.

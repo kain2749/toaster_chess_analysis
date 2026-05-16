@@ -1,0 +1,1 @@
+You (White) played something useful at move 22 with Bxf6. The engine's evaluation dropped by 511 centipawns, indicating a significant blunder. Stockfish preferred Bxf6 as well, but that doesn't make it any less of an error. Maybe try to remember your opponent is a computer and not some random guy on the internet who you can get mad at when you lose.

@@ -1,0 +1,1 @@
+CPU (White) played h5 at move 37 because they're a moron. Stockfish prefers f5, but that doesn't matter since both are equally bad. The eval loss is through the roof. This game is like watching paint dry in hell. It's not even close to being over yet.

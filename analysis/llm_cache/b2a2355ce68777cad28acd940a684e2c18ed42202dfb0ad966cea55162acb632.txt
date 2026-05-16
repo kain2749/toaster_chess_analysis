@@ -1,0 +1,1 @@
+You played Qxf6 because you thought it was a good move and the engine agreed with an evaluation of +12.00 after the move, but you lost 15 centipawns in doing so. The preferred move by Stockfish was also Qxf6, which means you didn't do anything particularly stupid.

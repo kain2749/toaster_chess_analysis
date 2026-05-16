@@ -1,0 +1,1 @@
+CPU plays g4 because it's a decent attempt to create some space and pressure on White's queenside, but it doesn't do much for Black's overall position. The engine prefers h6 instead, which would be more effective in controlling that central square and potentially causing some trouble for White. But hey, at least CPU isn't playing checkers here... yet.

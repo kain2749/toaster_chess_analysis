@@ -1,0 +1,1 @@
+You played Qxd7 to give your queen a nice meal while also protecting the pawn on d6. You're not really trying to win, are you? Stockfish agrees with this move, but it only earned you 15 centipawns. Your opponent must be feeling pretty annoyed right now.

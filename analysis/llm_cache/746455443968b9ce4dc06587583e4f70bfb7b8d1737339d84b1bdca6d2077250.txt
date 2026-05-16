@@ -1,0 +1,1 @@
+CPU played Qb3 because it was a mistake, and the eval dropped by nearly five points. Stockfish preferred Nbd2, but White decided to move its queen instead. The centipawn loss was significant at 477, meaning that White's position weakened considerably after this move.

@@ -1,0 +1,1 @@
+CPU (White) played Bxe7 at move 20 because it was a mistake that resulted in significant eval loss. The preferred move would have been cxd4, but White decided to take the pawn instead. This decision cost them valuable centipawns and weakened their position on the board.

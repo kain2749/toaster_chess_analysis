@@ -1,0 +1,1 @@
+You (Black) played something useful at move 8 with Na5. Stockfish preferred it too, but that's not surprising considering how much you both love wasting time in this game. The engine facts say that the eval dropped a tiny bit after this move, so if you were hoping for a quick win, you're out of luck - and patience.

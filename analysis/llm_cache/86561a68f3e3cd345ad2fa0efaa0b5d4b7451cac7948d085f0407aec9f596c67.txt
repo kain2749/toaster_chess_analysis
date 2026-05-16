@@ -1,0 +1,1 @@
+CPU (Black) played Qxc2 at move 24 because they're a fucking idiot who doesn't know when to quit. Stockfish preferred Qf5, but that doesn't help them much. Major eval loss of 99,274 points. They've got the chess IQ of a potato.

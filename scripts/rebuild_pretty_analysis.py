@@ -410,9 +410,85 @@ def final_board_from_game(game: chess.pgn.Game) -> tuple[chess.Board, Optional[c
 
 # ---------- ollama ----------
 
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def log_ollama_call(
+    *,
+    game_id: Optional[str],
+    kind: str,
+    prompt: str,
+    response: str = "",
+    error: str = "",
+) -> None:
+    if PHRASE_MEMORY is None:
+        return
+
+    try:
+        PHRASE_MEMORY.remember_ollama_call(
+            game_id=game_id,
+            kind=kind,
+            model=OLLAMA_MODEL,
+            prompt_text=prompt,
+            response_text=response,
+            error_text=error,
+        )
+    except Exception as exc:
+        print(f"Phrase memory Ollama-call log failed: {exc}")
+
+
+def debug_dump_ollama_call(
+    *,
+    game_id: Optional[str],
+    kind: str,
+    prompt: str,
+    response: str = "",
+    error: str = "",
+) -> None:
+    if os.getenv("TOASTER_DEBUG_OLLAMA", "0") != "1":
+        return
+
+    debug_dir = ANALYSIS_DIR / "debug_ollama_io"
+    debug_dir.mkdir(parents=True, exist_ok=True)
+
+    prompt_hash = sha256_text(prompt)[:12]
+    safe_game = safe_slug(game_id or "unknown")[:32]
+    safe_kind = safe_slug(kind)
+    counter = len(list(debug_dir.glob("*.combined.txt"))) + 1
+    base = f"{counter:04d}_{safe_kind}_{safe_game}_{prompt_hash}"
+
+    prompt_path = debug_dir / f"{base}.prompt.txt"
+    response_path = debug_dir / f"{base}.response.txt"
+    combined_path = debug_dir / f"{base}.combined.txt"
+
+    prompt_path.write_text(prompt, encoding="utf-8")
+    response_path.write_text(response or error or "", encoding="utf-8")
+
+    parts = [
+        f"KIND: {kind}",
+        f"GAME_ID: {game_id or 'unknown'}",
+        f"PROMPT_HASH: {prompt_hash}",
+        "",
+        "===== PROMPT =====",
+        prompt,
+        "",
+        "===== RESPONSE =====",
+        response,
+    ]
+
+    if error:
+        parts.extend(["", "===== ERROR =====", error])
+
+    combined_path.write_text("\n".join(parts), encoding="utf-8")
+    print(f"DEBUG Ollama I/O: {combined_path.relative_to(REPO)}")
+
+
 def row_cache_key(row: dict) -> str:
     payload = {
         "model": OLLAMA_MODEL,
+        "game_id": row.get("game_id"),
+        "avoidance_hash": row.get("avoidance_hash"),
         "fen": row["board_before"].fen(),
         "actor": row["actor"],
         "side": row["side"],
@@ -422,12 +498,59 @@ def row_cache_key(row: dict) -> str:
         "eval_before": fmt_eval(row["eval_before"]),
         "eval_after": fmt_eval(row["eval_after"]),
         "loss_cp": row["loss_cp"],
-        "game_id": row.get("game_id"),
-        "avoidance_hash": row.get("avoidance_hash"),
-        "prompt_version": "toaster_ollama_v8_mysql_phrase_memory",
+        "prompt_version": "toaster_move_note_result_safe_v1",
     }
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(blob).hexdigest()
+
+
+def game_result_facts(game: chess.pgn.Game, roles: dict) -> dict:
+    result = game.headers.get("Result", "?")
+    you_side = roles.get("you_side")
+    cpu_side = roles.get("cpu_side")
+
+    if result == "1-0":
+        winner_side = "White"
+        loser_side = "Black"
+    elif result == "0-1":
+        winner_side = "Black"
+        loser_side = "White"
+    elif result == "1/2-1/2":
+        winner_side = None
+        loser_side = None
+    else:
+        winner_side = None
+        loser_side = None
+
+    if result == "1/2-1/2":
+        user_outcome = "USER DREW"
+    elif winner_side is None:
+        user_outcome = "UNKNOWN"
+    elif you_side == winner_side:
+        user_outcome = "USER WON"
+    else:
+        user_outcome = "USER LOST"
+
+    return {
+        "result": result,
+        "you_side": you_side or "Unknown",
+        "cpu_side": cpu_side or "Unknown",
+        "winner_side": winner_side or "None",
+        "loser_side": loser_side or "None",
+        "winner_actor": actor_label(winner_side, roles) if winner_side else "None",
+        "loser_actor": actor_label(loser_side, roles) if loser_side else "None",
+        "user_outcome": user_outcome,
+    }
+
+
+def loss_severity(loss_cp: int) -> str:
+    if loss_cp >= LOSS_BLUNDER:
+        return "major"
+    if loss_cp >= LOSS_MISTAKE:
+        return "significant"
+    if loss_cp >= LOSS_INACCURACY:
+        return "noticeable"
+    return "minor"
 
 
 def ollama_prompt_for_row(row: dict, roles: dict, avoidance_block: str = "") -> str:
@@ -435,22 +558,22 @@ def ollama_prompt_for_row(row: dict, roles: dict, avoidance_block: str = "") -> 
     cpu_side = roles["cpu_side"] or "Unknown"
 
     return f"""Move Note rules:
+- Write 1-3 short sentences.
+- No bullets.
+- No intro.
 - Use only the engine facts provided.
 - Do not invent tactics.
 - Do not mention numeric eval scores, centipawns, loss points, or "cp".
+- Explain this move only.
 - Do not summarize the whole game.
-- Do not list moves one by one like an engine table.
-- Mention only the played move and, if useful, the preferred move.
-- Keep it to 1-3 short sentences.
+- Do not decide who won or lost the game.
 - Sound like Toaster Chess: rude, blunt, mildly profane, and annoyed that it had to watch this.
-- If there was checkmate, end by naming the mating move.
-- If both sides played badly, say so.
-- Do not say "won cleanly" if the winner survived major blunders or mistakes.
-- Do not write bullets.
-- Do not use an intro like "Here's a note".
+- Do not insult the user personally; roast the move, the piece, or the position.
+- If the move is Best, do not call it incompetent.
+- If the move is bad, explain the concrete problem.
+- You may invent one dumb fake opening nickname for flavor only if it is obviously a joke.
+- Fake opening nicknames are not real chess theory. Do not present them as official openings.
 - End with a complete sentence.
-- If you do not know the real opening name, describe the opening structure plainly.
-- Do not invent named openings.
 
 Player info:
 - You are: {you_side}
@@ -463,15 +586,16 @@ Move being reviewed:
 Actor: {row['actor']}
 Played move: {row['played']}
 Label: {row['label']}
+Severity: {loss_severity(row['loss_cp'])}
 
 Engine facts:
 Eval before: {fmt_eval(row['eval_before'])}
 Eval after: {fmt_eval(row['eval_after'])}
-Stockfish preferred: {row['best']}
-Centipawn loss: {row['loss_cp']}
+Preferred move: {row['best']}
 
 Plain-English target:
-Explain why {row['actor']} played something useful or stupid at move {row['move_no']} with {row['played']}. If the preferred move differs, mention {row['best']} only if it helps.
+Explain why {row['actor']} played something useful or stupid at move {row['move_no']} with {row['played']}.
+If the preferred move differs, mention {row['best']} only if it helps.
 
 Fallback explanation:
 {row['reason']}
@@ -479,10 +603,10 @@ Fallback explanation:
 Anti-repetition memory:
 {avoidance_block}
 
+The anti-repetition memory is wording history only. It is not factual context for this move.
 Do not reuse the same sentence shape, joke, metaphor, insult, or opening phrase from the already-used wording.
-Prefer concrete chess consequences over generic roasting.
 
-Write the note now.
+Write the move note now.
 """
 
 
@@ -493,7 +617,6 @@ def clean_llm_note(text: str) -> str:
     if not text:
         return text
 
-    # Kill common dumb intros.
     for prefix in (
         "Here's a note:",
         "Here is a note:",
@@ -504,12 +627,10 @@ def clean_llm_note(text: str) -> str:
         if text.lower().startswith(prefix.lower()):
             text = text[len(prefix):].strip()
 
-    # Keep only complete sentences if possible.
     last_end = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
     if last_end != -1:
         text = text[: last_end + 1]
 
-    # Hard character cap for phone readability.
     if len(text) > 500:
         clipped = text[:500]
         last_end = max(clipped.rfind("."), clipped.rfind("!"), clipped.rfind("?"))
@@ -521,7 +642,7 @@ def clean_llm_note(text: str) -> str:
     return text
 
 
-def call_ollama(prompt: str) -> str:
+def call_ollama(prompt: str, *, kind: str = "unknown", game_id: Optional[str] = None) -> str:
     body = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
@@ -541,18 +662,37 @@ def call_ollama(prompt: str) -> str:
         method="POST",
     )
 
-    with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
 
-    text = data.get("response", "").strip()
-    return " ".join(text.split()).strip()
+        text = data.get("response", "").strip()
+        text = " ".join(text.split()).strip()
+
+        log_ollama_call(game_id=game_id, kind=kind, prompt=prompt, response=text)
+        debug_dump_ollama_call(game_id=game_id, kind=kind, prompt=prompt, response=text)
+
+        return text
+
+    except Exception as exc:
+        error = repr(exc)
+        log_ollama_call(game_id=game_id, kind=kind, prompt=prompt, error=error)
+        debug_dump_ollama_call(game_id=game_id, kind=kind, prompt=prompt, error=error)
+        raise
 
 
 def ollama_explanation_for_row(row: dict, roles: dict, note_index: int, game_id: str) -> str:
     if not USE_OLLAMA or note_index >= OLLAMA_MAX_NOTES:
         return row["reason"]
 
-    avoidance_block = safe_move_note_avoidance_block(game_id, row, limit=8)
+    avoidance_block = ""
+    if PHRASE_MEMORY is not None:
+        try:
+            avoidance_block = PHRASE_MEMORY.move_note_avoidance_block(game_id, row, limit=8)
+        except Exception as exc:
+            print(f"Phrase memory move-note lookup failed: {exc}")
+            avoidance_block = ""
+
     row["game_id"] = game_id
     row["avoidance_hash"] = hashlib.sha256(avoidance_block.encode("utf-8")).hexdigest()
 
@@ -568,8 +708,13 @@ def ollama_explanation_for_row(row: dict, roles: dict, note_index: int, game_id:
     prompt = ollama_prompt_for_row(row, roles, avoidance_block)
 
     try:
-        explanation = call_ollama(prompt)
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        explanation = call_ollama(
+            prompt,
+            kind=f"move_note_ply_{row['ply']}_{safe_slug(row['actor'])}_{safe_slug(row['label'])}",
+            game_id=game_id,
+        )
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        print(f"Ollama move-note failed: {exc}")
         return row["reason"]
 
     explanation = clean_llm_note(explanation)
@@ -578,7 +723,13 @@ def ollama_explanation_for_row(row: dict, roles: dict, note_index: int, game_id:
         return row["reason"]
 
     cache_path.write_text(explanation + "\n", encoding="utf-8")
-    safe_remember_move_note(game_id, row, explanation)
+
+    if PHRASE_MEMORY is not None:
+        try:
+            PHRASE_MEMORY.remember_move_note(game_id, row, explanation)
+        except Exception as exc:
+            print(f"Phrase memory move-note write failed: {exc}")
+
     return explanation
 
 
@@ -612,11 +763,11 @@ def game_summary_cache_key(
         "black": game.headers.get("Black", "Black"),
         "you_side": roles.get("you_side"),
         "cpu_side": roles.get("cpu_side"),
-        "pgn": game_to_clean_pgn_text(game),
-        "key_moments": compact_rows,
         "game_id": game_id,
         "avoidance_hash": hashlib.sha256(avoidance_block.encode("utf-8")).hexdigest(),
-        "prompt_version": "toaster_game_story_v2_mysql_phrase_memory",
+        "pgn": game_to_clean_pgn_text(game),
+        "key_moments": compact_rows,
+        "prompt_version": "toaster_game_story_result_safe_v1",
     }
 
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -639,6 +790,29 @@ def compact_key_moments_for_prompt(key_moments: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def worst_row_for_actor(rows: list[dict], actor_prefix: str) -> Optional[dict]:
+    actor_rows = [
+        r for r in rows
+        if r["actor"].startswith(actor_prefix)
+        and r["loss_cp"] >= LOSS_INACCURACY
+    ]
+    if not actor_rows:
+        return None
+    return max(actor_rows, key=lambda r: r["loss_cp"])
+
+
+def row_brief(row: Optional[dict]) -> str:
+    if row is None:
+        return "None."
+
+    return (
+        f"Move {row['move_no']} {row['played']} by {row['actor']}: "
+        f"{row['label']}; preferred {row['best']}; "
+        f"eval {fmt_eval(row['eval_before'])} to {fmt_eval(row['eval_after'])}; "
+        f"loss {row['loss_cp']} cp"
+    )
+
+
 def ollama_game_summary_prompt(
     game: chess.pgn.Game,
     roles: dict,
@@ -647,20 +821,20 @@ def ollama_game_summary_prompt(
     avoidance_block: str = "",
 ) -> str:
     result = game.headers.get("Result", "?")
+    facts = game_result_facts(game, roles)
+
     final_row = rows[-1] if rows else None
     final_move = "unknown"
     if final_row:
         final_move = f"{final_row['move_no']}. {final_row['played']} by {final_row['actor']}"
 
     worst = max(rows, key=lambda r: r["loss_cp"], default=None)
+    worst_you = worst_row_for_actor(rows, "You")
+    worst_cpu = worst_row_for_actor(rows, "CPU")
+
     worst_text = "No major engine complaint."
     if worst and worst["loss_cp"] >= LOSS_INACCURACY:
-        worst_text = (
-            f"Move {worst['move_no']} {worst['played']} by {worst['actor']}: "
-            f"{worst['label']}; preferred {worst['best']}; "
-            f"eval {fmt_eval(worst['eval_before'])} to {fmt_eval(worst['eval_after'])}; "
-            f"loss {worst['loss_cp']} cp"
-        )
+        worst_text = row_brief(worst)
 
     pgn = game_to_clean_pgn_text(game)
 
@@ -671,14 +845,30 @@ def ollama_game_summary_prompt(
 - Do not mention Stockfish by name.
 - Do not mention eval scores, centipawns, loss points, or numeric engine data.
 - Do not define chess terms like a textbook.
-- Do not insult the user personally; roast the game, move quality, pieces, or position.
-- Summarize the whole game, not one move.
-- Mention only 1-3 specific moves max.
+- Do not invent moves.
+- Do not contradict the non-negotiable outcome facts.
+- If User outcome is USER WON, do not say the user lost, got defeated, was beaten, failed to survive, or got a bitter taste from losing.
+- If User outcome is USER LOST, do not say the user won.
+- A blunder can mean "missed a stronger win" or "missed mate"; it does not automatically mean the mover lost.
+- If a player missed forced mate but still won, describe it as sloppy conversion, not defeat.
+- You may say the user made mistakes even in a win.
+- You may say the CPU threw the game if the worst engine complaint was by CPU.
 - If both sides played badly, say so.
 - Do not say "won cleanly" if the winner survived major blunders or mistakes.
 - Keep it readable on a phone.
 - Sound like Toaster Chess: rude, blunt, mildly profane, and annoyed that it had to watch this.
+- You may invent one dumb fake opening nickname for flavor.
+- Fake opening nicknames must be obviously jokes, not plausible real chess theory.
+- Do not claim fake opening nicknames are official or real.
 - End with a complete sentence.
+
+Non-negotiable outcome facts:
+- PGN result: {facts['result']}
+- User side: {facts['you_side']}
+- CPU side: {facts['cpu_side']}
+- Winner: {facts['winner_actor']}
+- Loser: {facts['loser_actor']}
+- User outcome: {facts['user_outcome']}
 
 Game info:
 Result: {result}
@@ -686,20 +876,32 @@ You are: {roles.get('you_side') or 'Unknown'}
 Computer is: {roles.get('cpu_side') or 'Unknown'}
 Final move: {final_move}
 
-Biggest engine complaint:
+Engine story:
+Biggest engine complaint overall:
 {worst_text}
+
+Worst user move:
+{row_brief(worst_you)}
+
+Worst CPU move:
+{row_brief(worst_cpu)}
+
+Important interpretation:
+- The engine complaint is about move quality, not necessarily the final winner.
+- A move can be labeled Blunder because it missed mate or missed a stronger continuation while still keeping a winning position.
+- The non-negotiable outcome facts decide who won.
 
 Promoted key moments:
 {compact_key_moments_for_prompt(key_moments)}
 
-Full clean PGN:
-{pgn}
-
 Anti-repetition memory:
 {avoidance_block}
 
-Do not reuse the same structure, opening sentence, joke, metaphor, or insult from the prior summaries.
-Prefer concrete chess consequences over generic roasting.
+The anti-repetition memory is wording history only. It is not factual context for this game.
+Do not copy the structure, opening sentence, joke, metaphor, or insult from prior summaries.
+
+Full clean PGN:
+{pgn}
 
 Write the game story now.
 """
@@ -740,7 +942,9 @@ def ollama_game_summary(
     if not USE_OLLAMA:
         return ""
 
-    avoidance_block = safe_game_summary_avoidance_block(limit=12)
+    # Do not feed full old summaries back into the summary prompt.
+    # That caused bad summaries to self-reinforce. We still STORE summaries after generation.
+    avoidance_block = "No prior full summaries are injected. Avoid repetitive jokes and sentence structure."
 
     LLM_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_key = game_summary_cache_key(game, roles, rows, key_moments, game_id, avoidance_block)
@@ -754,8 +958,9 @@ def ollama_game_summary(
     prompt = ollama_game_summary_prompt(game, roles, rows, key_moments, avoidance_block)
 
     try:
-        summary = call_ollama(prompt)
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        summary = call_ollama(prompt, kind="game_summary", game_id=game_id)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        print(f"Ollama game-summary failed: {exc}")
         return ""
 
     summary = clean_game_summary(summary)
@@ -764,15 +969,20 @@ def ollama_game_summary(
         return ""
 
     cache_path.write_text(summary + "\n", encoding="utf-8")
-    safe_remember_game_summary(
-        game_id,
-        summary,
-        result=game.headers.get("Result", "?"),
-        you_side=roles.get("you_side"),
-        cpu_side=roles.get("cpu_side"),
-    )
-    return summary
 
+    if PHRASE_MEMORY is not None:
+        try:
+            PHRASE_MEMORY.remember_game_summary(
+                game_id,
+                summary,
+                result=game.headers.get("Result", "?"),
+                you_side=roles.get("you_side"),
+                cpu_side=roles.get("cpu_side"),
+            )
+        except Exception as exc:
+            print(f"Phrase memory summary write failed: {exc}")
+
+    return summary
 
 # ---------- selection ----------
 
@@ -870,6 +1080,13 @@ def analyze_game(engine: chess.engine.SimpleEngine, pgn_path: Path) -> Path:
     game = parse_game(pgn_path)
     roles = identify_player_roles(game)
     board = game.board()
+
+    clean_pgn = game_to_clean_pgn_text(game)
+    game_id = (
+        PHRASE_MEMORY.game_id_from_pgn_text(clean_pgn)
+        if PHRASE_MEMORY is not None
+        else hashlib.sha256(clean_pgn.encode("utf-8")).hexdigest()[:32]
+    )
     game_id = game_id_for_game(game)
 
     stem = report_stem(game, pgn_path)
@@ -1196,7 +1413,7 @@ def remove_existing_assets_for_report(game: chess.pgn.Game, pgn_path: Path) -> N
         shutil.rmtree(asset_dir)
 
 
-def rebuild_all(force: bool = False) -> None:
+def rebuild_all(force: bool = False, only_pgn: Optional[Path] = None) -> None:
     global FORCE_LLM_REGEN
     FORCE_LLM_REGEN = force
 
@@ -1219,6 +1436,10 @@ def rebuild_all(force: bool = False) -> None:
 
     with chess.engine.SimpleEngine.popen_uci(engine_path) as engine:
         for pgn in pgns:
+            if not pgn.exists():
+                print(f"PGN not found: {pgn}")
+                continue
+
             game = parse_game(pgn)
             out_path = ANALYSIS_DIR / report_filename(game, pgn)
 
@@ -1241,13 +1462,14 @@ def rebuild_all(force: bool = False) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--force", action="store_true", help="Regenerate all reports even if markdown already exists.")
+    parser.add_argument("--force", action="store_true", help="Regenerate reports even if markdown already exists.")
+    parser.add_argument("--pgn", type=Path, help="Analyze only one PGN path, relative to repo or absolute.")
     args = parser.parse_args()
+
     try:
-        rebuild_all(force=args.force)
+        rebuild_all(force=args.force, only_pgn=args.pgn)
     finally:
         stop_ollama_model()  # let my vram be free plz
-
 
 if __name__ == "__main__":
     main()

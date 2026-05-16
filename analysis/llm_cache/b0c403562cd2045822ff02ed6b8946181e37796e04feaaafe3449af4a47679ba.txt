@@ -1,0 +1,1 @@
+CPU (White) played Bg2 at move 34 because it's as if they were trying to lose this game on purpose. This move is a blunder of major severity, and the engine strongly prefers h3 instead. The CPU must have been high or something because playing like that is just embarrassing. Fallback explanation: Major eval loss.

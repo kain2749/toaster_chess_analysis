@@ -1,0 +1,1 @@
+You played Qe6+ at move 27 and you're lucky it didn't end up in a checkmate on h3 or g3, but this is still pretty dumb. You don't need to give your queen away for free just because you've got mate coming soon. The computer would have preferred Rxd1+ instead of giving the queen away. Maybe next time try not being so stupid and actually listen to what the damn engine says.

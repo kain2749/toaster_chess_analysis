@@ -1,0 +1,1 @@
+CPU (White) played f3 because it was dumb as hell and didn't even consider its preferred move, f5. This resulted in a major eval loss of 1437 centipawns. It's like they were playing with their eyes closed or something. The end result is that the CPU lost the game cleanly by getting checkmated on h8 with Qxh8#.

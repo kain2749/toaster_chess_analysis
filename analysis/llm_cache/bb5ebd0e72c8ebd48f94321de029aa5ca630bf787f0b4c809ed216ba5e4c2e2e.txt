@@ -1,0 +1,1 @@
+CPU (White) played Qxb7 as a blunder at move 22. This move is so stupid it makes me want to throw my computer out of the window. The preferred move, Qd1, would have been much more useful and kept White in the game. Instead, CPU decided to give up its queen for nothing in return, effectively handing over the win to Black. Major eval loss indeed!

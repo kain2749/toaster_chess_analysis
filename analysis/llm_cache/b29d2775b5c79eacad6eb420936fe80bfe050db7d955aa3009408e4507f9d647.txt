@@ -1,0 +1,1 @@
+CPU (Black) played exf5 at move 10 because it was engine-approved and gained an eval advantage of +0.37 to +0.65, but it's just a dumb pawn grab that costs centipawn loss. It might be useful if you can get some attack going against my king, but right now I don't see how this is helpful for you.

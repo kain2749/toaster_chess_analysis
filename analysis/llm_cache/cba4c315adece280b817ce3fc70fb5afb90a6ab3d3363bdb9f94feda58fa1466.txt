@@ -1,0 +1,1 @@
+CPU (Black) played Ne8 at move 20 because it was a stupid mistake, resulting in a significant eval loss of 368 centipawns. Stockfish preferred Qc7 instead, which would have been useful to maintain pressure on White's position. However, CPU (Black) opted for the mistake and now has to deal with the consequences.

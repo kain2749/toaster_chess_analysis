@@ -19,7 +19,7 @@ class MysqlConfig:
     host: str = os.getenv("TOASTER_MYSQL_HOST", "127.0.0.1")
     port: int = int(os.getenv("TOASTER_MYSQL_PORT", "3306"))
     user: str = os.getenv("TOASTER_MYSQL_USER", "toaster")
-    password: str = os.getenv("TOASTER_MYSQL_PASSWORD", "pick-a-real-password")
+    password: str = os.getenv("TOASTER_MYSQL_PASSWORD", "password")
     database: str = os.getenv("TOASTER_MYSQL_DATABASE", DEFAULT_DB_NAME)
 
 
@@ -90,6 +90,27 @@ class OllamaPhraseMemory:
                     KEY idx_game_created (game_id, created_at),
                     KEY idx_game_label (game_id, label),
                     KEY idx_game_actor (game_id, actor)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS ollama_calls (
+                    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    game_id VARCHAR(128) NULL,
+                    kind VARCHAR(64) NOT NULL,
+                    prompt_hash CHAR(64) NOT NULL,
+                    response_hash CHAR(64) NULL,
+                    model VARCHAR(128) NULL,
+                    prompt_text LONGTEXT NOT NULL,
+                    response_text LONGTEXT NULL,
+                    error_text TEXT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                    KEY idx_game_kind_created (game_id, kind, created_at),
+                    KEY idx_prompt_hash (prompt_hash),
+                    KEY idx_response_hash (response_hash)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             )
@@ -179,6 +200,44 @@ class OllamaPhraseMemory:
                     cpu_side,
                     self._hash_text(summary_text),
                     summary_text,
+                ),
+            )
+
+    def remember_ollama_call(
+        self,
+        *,
+        game_id: Optional[str],
+        kind: str,
+        model: Optional[str],
+        prompt_text: str,
+        response_text: Optional[str] = None,
+        error_text: Optional[str] = None,
+    ) -> None:
+        prompt_text = prompt_text or ""
+        response_text = response_text or ""
+        error_text = error_text or ""
+
+        prompt_hash = self._hash_text(prompt_text)
+        response_hash = self._hash_text(response_text) if response_text else None
+
+        with self._connect_db() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO ollama_calls
+                    (game_id, kind, prompt_hash, response_hash, model, prompt_text, response_text, error_text)
+                VALUES
+                    (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    game_id,
+                    kind,
+                    prompt_hash,
+                    response_hash,
+                    model,
+                    prompt_text,
+                    response_text if response_text else None,
+                    error_text if error_text else None,
                 ),
             )
 

@@ -1,0 +1,1 @@
+CPU (Black) played something useful at move 27 with Kh7. The engine evaluation increased by +0.10 after this move, which is not much, but it's a step in the right direction. It's like when you finally find your keys after searching for them all over the house - small victory, but still progress.

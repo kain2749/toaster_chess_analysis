@@ -1,0 +1,1 @@
+CPU (Black) played something useful or stupid at move 35 with Bxa2. This is a major eval loss for Black as White has mate coming up. The preferred move for Black in this position was a3, but playing Bxa2 instead shows that the CPU needs to brush up on its checkmate-avoiding skills.

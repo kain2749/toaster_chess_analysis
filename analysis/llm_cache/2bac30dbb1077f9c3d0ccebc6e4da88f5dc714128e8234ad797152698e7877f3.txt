@@ -1,0 +1,1 @@
+CPU (Black) played Rxd1 at move 25 because it's a blunder that leads to an immediate mate for White. Stockfish preferred Nd5, but Black decided to take the knight on d1 instead. This resulted in a major eval loss of 98593 centipawns and put White in a position where they can easily checkmate Black.

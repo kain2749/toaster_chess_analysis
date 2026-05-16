@@ -1,0 +1,1 @@
+You (Black) played Nc4 because you wanted to annoy White by making them play around your knight for a while. The move was useful in that it prevented White from advancing their pawn on e5, but it also opened up some lines for White's pieces to attack your king. Stockfish agrees with the move choice, so at least one computer thinks you made a decent decision.

@@ -1,0 +1,1 @@
+CPU (Black), you moron, played Kxb7 at move 37. Surely even a toaster could've seen that Bd2 was the preferred move, giving an eval of +18.69 compared to your -14.07 with Kxb7. Your knight on b7 is now hanging in the wind like a lost soul at a funeral. Maybe next time you should let the computer play for you; it seems to have more sense than you do.
