@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -24,6 +25,12 @@ ANALYSIS_DIR = REPO / "analysis"
 ASSET_DIR = ANALYSIS_DIR / "assets"
 INDEX = ANALYSIS_DIR / "index.md"
 LLM_CACHE_DIR = ANALYSIS_DIR / "llm_cache"
+
+# Let this script import repo-local modules when run from scripts/.
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
+
+from lib.ollama_phrase_memory import OllamaPhraseMemory
 
 DEPTH = 14
 MULTIPV = 3
@@ -52,6 +59,10 @@ OLLAMA_URL = os.getenv("TOASTER_OLLAMA_URL", "http://127.0.0.1:11434/api/generat
 OLLAMA_TIMEOUT = int(os.getenv("TOASTER_OLLAMA_TIMEOUT", "120"))
 OLLAMA_MAX_NOTES = int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "9999"))
 OLLAMA_NUM_PREDICT = int(os.getenv("TOASTER_OLLAMA_NUM_PREDICT", "320"))
+USE_PHRASE_MEMORY = os.getenv("TOASTER_USE_PHRASE_MEMORY", "1") != "0"
+FORCE_LLM_REGEN = False
+
+PHRASE_MEMORY = OllamaPhraseMemory() if USE_PHRASE_MEMORY else None
 
 
 # ---------- utility ----------
@@ -394,7 +405,11 @@ Explain why {row['actor']} played something useful or stupid at move {row['move_
 Fallback explanation:
 {row['reason']}
 
-Write the note now.
+Anti-repetition memory:
+{avoidance_block}
+
+Do not reuse the same sentence shape, joke, metaphor, insult, or opening phrase from the already-used wording.
+Prefer concrete chess consequences over generic roasting.
 """
 
 
@@ -439,7 +454,9 @@ def call_ollama(prompt: str) -> str:
         "prompt": prompt,
         "stream": False,
         "options": {
-            "temperature": 0.2,
+            "temperature": 0.45,
+            "top_p": 0.9,
+            "repeat_penalty": 1.15,
             "num_predict": OLLAMA_NUM_PREDICT,
         },
     }
@@ -488,7 +505,14 @@ def ollama_explanation_for_row(row: dict, roles: dict, note_index: int) -> str:
 
 
 
-def game_summary_cache_key(game: chess.pgn.Game, roles: dict, rows: list[dict], key_moments: list[dict]) -> str:
+def game_summary_cache_key(
+    game: chess.pgn.Game,
+    roles: dict,
+    rows: list[dict],
+    key_moments: list[dict],
+    game_id: str,
+    avoidance_block: str,
+) -> str:
     compact_rows = [
         {
             "ply": r["ply"],
@@ -513,7 +537,9 @@ def game_summary_cache_key(game: chess.pgn.Game, roles: dict, rows: list[dict], 
         "cpu_side": roles.get("cpu_side"),
         "pgn": game_to_clean_pgn_text(game),
         "key_moments": compact_rows,
-        "prompt_version": "toaster_game_story_v1",
+        "game_id": row.get("game_id"),
+        "avoidance_hash": row.get("avoidance_hash"),
+        "prompt_version": "toaster_ollama_v8_mysql_phrase_memory",
     }
 
     blob = json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -875,10 +901,12 @@ def write_report(
     result = headers.get("Result", "?")
     date = headers.get("Date", "unknown")
 
-    blunders = [r for r in rows if r["label"] == "Blunder"]
-    mistakes = [r for r in rows if r["label"] == "Mistake"]
-    inaccuracies = [r for r in rows if r["label"] == "Inaccuracy"]
-    bests = [r for r in rows if r["label"] == "Best"]
+    your_rows = [r for r in rows if r["actor"].startswith("You")]
+
+    blunders = [r for r in your_rows if r["label"] == "Blunder"]
+    mistakes = [r for r in your_rows if r["label"] == "Mistake"]
+    inaccuracies = [r for r in your_rows if r["label"] == "Inaccuracy"]
+    bests = [r for r in your_rows if r["label"] == "Best"]
 
     worst = max(rows, key=lambda r: r["loss_cp"], default=None)
     final_row = rows[-1] if rows else None
