@@ -152,7 +152,7 @@ Type=oneshot
 WorkingDirectory=%h/repos/toaster_chess_analysis
 Environment=TOASTER_OLLAMA_MODEL=dolphin-mistral
 Environment=TOASTER_MYSQL_PASSWORD=password
-ExecStart=/usr/bin/python3 ~/repos/toaster_chess_analysis/scripts/poll_pgns_push_analysis.py
+ExecStart=/usr/bin/python ~/repos/toaster_chess_analysis/scripts/poll_pgns_push_analysis.py
 ```
 
 If the service fails, look at the logs first:
