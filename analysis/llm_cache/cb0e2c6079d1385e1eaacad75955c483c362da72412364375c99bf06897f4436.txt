@@ -1,0 +1,1 @@
+CPU (White) played Bxa6, a blunder that led to Black having mate. Stockfish preferred Bc2, but White's move was so stupid that it doesn't matter. The centipawn loss is massive at 99411. This game was a disaster for both sides, but White had the biggest overreach with this move.

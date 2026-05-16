@@ -1,0 +1,1 @@
+CPU (White) played a stupid move with Bd3, losing significant eval points. It should have played c7 instead, but instead it went for this garbage. Black failed to punish it and eventually won because White overreached.

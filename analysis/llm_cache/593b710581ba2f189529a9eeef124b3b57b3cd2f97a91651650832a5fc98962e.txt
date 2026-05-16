@@ -1,0 +1,1 @@
+CPU (White) played a dumbass move with Nf3 at move 10. It lost 388 centipawns and went from +2.51 to -1.37 on the evaluation scale. Stockfish preferred Nge2, but who cares? The CPU is just trying to make things difficult for itself.

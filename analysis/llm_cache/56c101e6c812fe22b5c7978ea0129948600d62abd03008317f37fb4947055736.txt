@@ -1,0 +1,1 @@
+CPU's Bc4 is a mistake because it loses 515 centipawns and drops from +5.74 to +0.59. Stockfish prefers axb4, but that doesn't matter since White should have played something else entirely. This move shows that the CPU is not only weak at chess, but also has a terrible sense of humor.
