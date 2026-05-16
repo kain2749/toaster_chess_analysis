@@ -21,8 +21,6 @@ import json
 import os
 import urllib.error
 import urllib.request
-import re
-from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -43,44 +41,6 @@ from lib.analysis import (
 
 
 DEFAULT_DB_NAME = "toaster_chess_ollama"
-
-SUMMARY_STOPWORDS = {
-    "the", "a", "an", "and", "or", "but", "if", "to", "of", "in", "on",
-    "for", "with", "as", "by", "at", "from", "that", "this", "it", "its",
-    "was", "were", "is", "are", "be", "been", "being",
-    "you", "your", "cpu", "white", "black",
-    "move", "moves", "game", "played", "playing",
-    "made", "still", "ended", "position",
-}
-
-
-def normalize_summary_words(text: str) -> list[str]:
-    text = text.lower()
-    text = re.sub(r"[^a-z0-9+#=\s'-]", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text.split()
-
-
-def summary_ngrams(words: list[str], min_n: int = 2, max_n: int = 6) -> list[str]:
-    phrases: list[str] = []
-
-    for n in range(min_n, max_n + 1):
-        for i in range(0, len(words) - n + 1):
-            chunk = words[i:i + n]
-
-            meaningful = [w for w in chunk if w not in SUMMARY_STOPWORDS]
-            if len(meaningful) < 2:
-                continue
-
-            phrase = " ".join(chunk)
-
-            if len(phrase) < 8:
-                continue
-
-            phrases.append(phrase)
-
-    return phrases
-
 
 
 @dataclass(frozen=True)
@@ -214,22 +174,10 @@ class OllamaPhraseMemory:
                     phrase VARCHAR(255) NOT NULL,
                     reason VARCHAR(255) NULL,
                     source VARCHAR(64) NOT NULL DEFAULT 'manual',
-                    hit_count INT NOT NULL DEFAULT 0,
-                    last_seen TIMESTAMP NULL DEFAULT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                    UNIQUE KEY uq_phrase (phrase),
-                    KEY idx_source_seen (source, last_seen),
-                    KEY idx_hit_count (hit_count)
+                    UNIQUE KEY uq_phrase (phrase)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
-            )
-
-            cur.execute(
-                """
-                ALTER TABLE summary_avoid_phrases
-                    ADD COLUMN IF NOT EXISTS hit_count INT NOT NULL DEFAULT 0,
-                    ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP NULL DEFAULT NULL
                 """
             )
 
@@ -375,70 +323,6 @@ class OllamaPhraseMemory:
             )
             return [row[0] for row in cur.fetchall()]
 
-    def recent_game_summary_texts(self, *, limit: int = 25) -> list[str]:
-        with self._connect_db() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT summary_text
-                FROM game_summaries
-                ORDER BY created_at DESC, id DESC
-                LIMIT %s
-                """,
-                (limit,),
-            )
-            return [row[0] for row in cur.fetchall()]
-
-    def refresh_auto_summary_cooldowns(
-        self,
-        *,
-        summary_limit: int = 25,
-        min_count: int = 2,
-        max_phrases: int = 30,
-    ) -> None:
-        summaries = self.recent_game_summary_texts(limit=summary_limit)
-
-        counter = Counter()
-        for summary in summaries:
-            words = normalize_summary_words(summary)
-            counter.update(summary_ngrams(words, min_n=2, max_n=6))
-
-        candidates: list[tuple[str, str, str, int]] = []
-
-        for phrase, count in counter.most_common():
-            if count < min_count:
-                continue
-
-            candidates.append((
-                phrase,
-                f"auto cooldown: appeared {count} times in last {summary_limit} summaries",
-                "auto",
-                count,
-            ))
-
-            if len(candidates) >= max_phrases:
-                break
-
-        if not candidates:
-            return
-
-        with self._connect_db() as conn:
-            cur = conn.cursor()
-            cur.executemany(
-                """
-                INSERT INTO summary_avoid_phrases
-                    (phrase, reason, source, hit_count, last_seen)
-                VALUES
-                    (%s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON DUPLICATE KEY UPDATE
-                    reason = VALUES(reason),
-                    source = IF(source = 'manual', source, VALUES(source)),
-                    hit_count = VALUES(hit_count),
-                    last_seen = CURRENT_TIMESTAMP
-                """,
-                candidates,
-            )
-
     def summary_avoid_phrases(self, *, limit: int = 20) -> list[str]:
         with self._connect_db() as conn:
             cur = conn.cursor()
@@ -446,37 +330,47 @@ class OllamaPhraseMemory:
                 """
                 SELECT phrase
                 FROM summary_avoid_phrases
-                WHERE source = 'manual'
-                   OR source = 'auto'
-                ORDER BY
-                    source = 'manual' DESC,
-                    hit_count DESC,
-                    last_seen DESC,
-                    id DESC
+                ORDER BY created_at DESC, id DESC
                 LIMIT %s
                 """,
                 (limit,),
             )
             return [row[0] for row in cur.fetchall()]
 
-    def summary_phrase_avoidance_block(self, *, limit: int = 20) -> str:
-        self.refresh_auto_summary_cooldowns(
-            summary_limit=25,
-            min_count=2,
-            max_phrases=30,
+    @staticmethod
+    def format_avoidance_block(items: list[str], title: str) -> str:
+        items = [i.strip() for i in items if i and i.strip()]
+        if not items:
+            return f"{title}\n- None."
+
+        return "\n".join([title, *[f"- {item}" for item in items]])
+
+    def move_note_avoidance_block(self, game_id: str, row: dict, *, limit: int = 8) -> str:
+        actor = row.get("actor", "")
+        actor_prefix = "You" if actor.startswith("You") else "CPU" if actor.startswith("CPU") else None
+
+        notes = self.recent_move_notes_for_game(
+            game_id,
+            label=row.get("label"),
+            actor_prefix=actor_prefix,
+            limit=limit,
         )
 
-        phrases = self.summary_avoid_phrases(limit=limit)
+        return self.format_avoidance_block(
+            notes,
+            "Already-used wording for similar move notes in this game:",
+        )
 
+    def summary_phrase_avoidance_block(self, *, limit: int = 20) -> str:
+        phrases = self.summary_avoid_phrases(limit=limit)
         if not phrases:
-            return "No summary phrase cooldowns active."
+            return "No summary phrase blacklist yet."
 
         return "\n".join([
-            "Avoid these manual bans or recently overused phrases:",
+            "Avoid these repeated or banned phrases:",
             *[f"- {phrase}" for phrase in phrases],
             "",
-            "These are wording cooldowns only. They are not facts about this game.",
-            "Do not infer winner, loser, move quality, or game events from this list.",
+            "These phrases are wording history only. They are not facts about this game.",
         ])
 
 
