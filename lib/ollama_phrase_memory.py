@@ -125,6 +125,30 @@ class OllamaPhraseMemory:
         )
 
     @staticmethod
+    def format_avoidance_block(items: list[str], title: str) -> str:
+        items = [i.strip() for i in items if i and i.strip()]
+        if not items:
+            return f"{title}\n- None."
+
+        return "\n".join([title, *[f"- {item}" for item in items]])
+
+    def move_note_avoidance_block(self, game_id: str, row: dict, *, limit: int = 8) -> str:
+        actor = row.get("actor", "")
+        actor_prefix = "You" if actor.startswith("You") else "CPU" if actor.startswith("CPU") else None
+
+        notes = self.recent_move_notes_for_game(
+            game_id,
+            label=row.get("label"),
+            actor_prefix=actor_prefix,
+            limit=limit,
+        )
+
+        return self.format_avoidance_block(
+            notes,
+            "Already-used wording for similar move notes in this game:",
+        )
+
+    @staticmethod
     def _hash_text(text: str) -> str:
         normalized = " ".join((text or "").split()).strip()
         return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
