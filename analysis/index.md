@@ -17,3 +17,4 @@
 - [2026-05-16 cpu 5 vs you pgn 2026 05 16 02h13 fe2efe78df03](2026-05-16_cpu_5_vs_you_pgn_2026_05_16_02h13_fe2efe78df03.md)
 - [2026-05-16 you vs cpu 5 pgn 2026 05 16 02h17 d10f3b40c8ba](2026-05-16_you_vs_cpu_5_pgn_2026_05_16_02h17_d10f3b40c8ba.md)
 - [2026-05-17 cpu 5 vs you pgn 2026 05 17 11h40 b22bd4600d81](2026-05-17_cpu_5_vs_you_pgn_2026_05_17_11h40_b22bd4600d81.md)
+- [2026-05-17 you vs cpu 5 pgn 2026 05 17 21h25 31b7cb8959a1](2026-05-17_you_vs_cpu_5_pgn_2026_05_17_21h25_31b7cb8959a1.md)
