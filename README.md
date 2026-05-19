@@ -1,3 +1,5 @@
+README is out of date, I've added in some functionality where you can use OpenAI/ChatGPT as an option using environment variables. The code in here will function as is, but I need to update this README. Thanks for READing ME.
+
 ![Toaster Chess Analysis, no AI was made in the production of this repo](docs/images/likely_made_by_chatgpt.png)
 
 # Toaster Chess Analysis
