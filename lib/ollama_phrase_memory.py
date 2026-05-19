@@ -961,7 +961,7 @@ Anti-repetition memory:
 The anti-repetition memory is wording history only. It is not factual context for this game.
 Do not copy the structure, opening sentence, joke, metaphor, or insult from prior summaries.
 
-Full clean PGN:
+Move list only:
 {game_to_clean_pgn_text(game)}
 
 Write the game story now.
