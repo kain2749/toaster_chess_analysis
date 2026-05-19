@@ -826,7 +826,7 @@ Write the move note now.
         try:
             note = self._call_llm(game_id=context.game_id, kind=kind, prompt=prompt)
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
-            print(f"Ollama move-note failed: {exc}")
+            print(f"LLM move-note failed: {exc}")
             return row["reason"]
 
         note = self._clean_note(note)
@@ -903,6 +903,7 @@ Write the move note now.
 - Use only the PGN facts, role facts, final move, engine story, and promoted key moments provided.
 - Do not mention Stockfish by name.
 - Do not invent moves, tactics, opening names, emotions, psychology, or story beats.
+- If you know the openings that were used, name them.
 - Do not contradict the non-negotiable outcome facts.
 - If User outcome is USER WON, do not say the user lost, got defeated, was beaten, failed to survive, or got a bitter taste from losing.
 - If User outcome is USER LOST, do not say the user won.
@@ -989,7 +990,7 @@ Write the game story now.
         try:
             summary = self._call_llm(game_id=context.game_id, kind="game_summary", prompt=prompt)
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
-            print(f"Ollama game-summary failed: {exc}")
+            print(f"LLM game-summary failed: {exc}")
             return ""
 
         summary = self._clean_note(summary, max_chars=1200)
