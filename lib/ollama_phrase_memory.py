@@ -635,6 +635,42 @@ class ToasterOllamaNarrator:
 
         raise ValueError(f"Unknown TOASTER_LLM_PROVIDER: {self.llm.provider}")
 
+    def _call_openai(self, *, game_id: str, kind: str, prompt: str) -> str:
+        if not self.llm.enabled:
+            return ""
+
+        try:
+            from openai import OpenAI
+        except ImportError as exc:
+            self._log_call(
+                game_id=game_id,
+                kind=kind,
+                prompt=prompt,
+                error="openai package is not installed",
+            )
+            raise RuntimeError(
+                "openai package is not installed. Run: python -m pip install openai"
+            ) from exc
+
+        client = OpenAI(timeout=self.openai.timeout)
+
+        try:
+            response = client.responses.create(
+                model=self.openai.model,
+                input=prompt,
+                reasoning={"effort": self.openai.reasoning_effort},
+                max_output_tokens=self.openai.max_output_tokens,
+            )
+
+            text = " ".join((response.output_text or "").split()).strip()
+            self._log_call(game_id=game_id, kind=kind, prompt=prompt, response=text)
+            return text
+
+        except Exception as exc:
+            self._log_call(game_id=game_id, kind=kind, prompt=prompt, error=repr(exc))
+            raise
+
+
     def _call_ollama_local(self, *, game_id: str, kind: str, prompt: str) -> str:
         if not self.ollama.enabled:
             return ""
