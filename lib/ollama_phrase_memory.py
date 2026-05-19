@@ -81,7 +81,22 @@ def summary_ngrams(words: list[str], min_n: int = 2, max_n: int = 6) -> list[str
 
     return phrases
 
+@dataclass(frozen=True)
+class LLMConfig:
+    provider: str = os.getenv("TOASTER_LLM_PROVIDER", "ollama").strip().lower()
+    enabled: bool = os.getenv(
+        "TOASTER_USE_LLM",
+        os.getenv("TOASTER_USE_OLLAMA", "1"),
+    ) != "0"
 
+
+@dataclass(frozen=True)
+class OpenAIConfig:
+    model: str = os.getenv("TOASTER_OPENAI_MODEL", "gpt-5.5")
+    timeout: int = int(os.getenv("TOASTER_OPENAI_TIMEOUT", "120"))
+    max_output_tokens: int = int(os.getenv("TOASTER_OPENAI_MAX_OUTPUT_TOKENS", "320"))
+    reasoning_effort: str = os.getenv("TOASTER_OPENAI_REASONING_EFFORT", "low")
+    
 
 @dataclass(frozen=True)
 class MysqlConfig:
