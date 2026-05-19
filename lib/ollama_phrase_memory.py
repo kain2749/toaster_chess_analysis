@@ -567,6 +567,11 @@ class ToasterOllamaNarrator:
         except Exception:
             pass
 
+    def _active_model_name(self) -> str:
+        if self.llm.provider == "openai":
+            return self.openai.model
+        return self.ollama.model
+
     def _log_call(
         self,
         *,
@@ -581,7 +586,7 @@ class ToasterOllamaNarrator:
                 self.memory.remember_ollama_call(
                     game_id=game_id,
                     kind=kind,
-                    model=self.ollama.model,
+                    model=self._active_model_name(),,
                     prompt_text=prompt,
                     response_text=response,
                     error_text=error,
