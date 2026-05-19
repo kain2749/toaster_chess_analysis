@@ -842,6 +842,18 @@ Write the move note now.
         return note
 
     @staticmethod
+    def _moves_only_pgn(game) -> str:
+        text = game_to_clean_pgn_text(game)
+        lines = []
+        for line in text.splitlines():
+            if line.startswith("[") and line.endswith("]"):
+                continue
+            if line.strip():
+                lines.append(line)
+        return "\n".join(lines)
+
+
+    @staticmethod
     def _worst_row_for_actor(rows: list[dict], actor_prefix: str) -> Optional[dict]:
         actor_rows = [
             r for r in rows
@@ -921,6 +933,7 @@ Write the move note now.
 - No fake opening nicknames.
 - No cute AI/persona commentary.
 - Keep it readable on a phone.
+- Do not mention the app, device, PGN source, Android, Site header, Event header, or file/source metadata.
 - End with a complete sentence.
 
 Non-negotiable outcome facts:
@@ -962,7 +975,7 @@ The anti-repetition memory is wording history only. It is not factual context fo
 Do not copy the structure, opening sentence, joke, metaphor, or insult from prior summaries.
 
 Move list only:
-{game_to_clean_pgn_text(game)}
+{self._moves_only_pgn(game)}
 
 Write the game story now.
 """
