@@ -548,7 +548,7 @@ class ToasterOllamaNarrator:
         self.openai = OpenAIConfig()
 
     def stop_model(self) -> None:
-        if not self.ollama.enabled:
+        if not self.llm.enabled:
             return
 
         try:
@@ -621,6 +621,19 @@ class ToasterOllamaNarrator:
                 encoding="utf-8",
             )
             print(f"DEBUG Ollama I/O: {combined_path}")
+
+
+    def _call_llm(self, *, game_id: str, kind: str, prompt: str) -> str:
+        if not self.llm.enabled:
+            return ""
+
+        if self.llm.provider == "ollama":
+            return self._call_ollama_local(game_id=game_id, kind=kind, prompt=prompt)
+
+        if self.llm.provider == "openai":
+            return self._call_openai(game_id=game_id, kind=kind, prompt=prompt)
+
+        raise ValueError(f"Unknown TOASTER_LLM_PROVIDER: {self.llm.provider}")
 
     def _call_ollama_local(self, *, game_id: str, kind: str, prompt: str) -> str:
         if not self.ollama.enabled:
@@ -754,7 +767,7 @@ Write the move note now.
 """
 
     def move_note(self, context: GameContext, row: dict, note_index: int) -> str:
-        if not self.ollama.enabled or note_index >= self.max_notes:
+        if not self.llm.enabled or note_index >= self.max_notes:
             return row["reason"]
 
         avoidance_block = ""
@@ -768,7 +781,7 @@ Write the move note now.
         kind = f"move_note_ply_{row['ply']}_{safe_slug(row['actor'])}_{safe_slug(row['label'])}"
 
         try:
-            note = self._call_ollama(game_id=context.game_id, kind=kind, prompt=prompt)
+            note = self._call_llm(game_id=context.game_id, kind=kind, prompt=prompt)
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
             print(f"Ollama move-note failed: {exc}")
             return row["reason"]
@@ -910,7 +923,7 @@ Write the game story now.
 """
 
     def game_story(self, context: GameContext) -> str:
-        if not self.ollama.enabled:
+        if not self.llm.enabled:
             return ""
 
         # Important: DO NOT inject full old summaries. They can poison the current summary.
@@ -930,7 +943,7 @@ Write the game story now.
         prompt = self._summary_prompt(context, avoidance_block)
 
         try:
-            summary = self._call_ollama(game_id=context.game_id, kind="game_summary", prompt=prompt)
+            summary = self._call_llm(game_id=context.game_id, kind="game_summary", prompt=prompt)
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
             print(f"Ollama game-summary failed: {exc}")
             return ""
