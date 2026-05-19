@@ -753,19 +753,26 @@ class ToasterOllamaNarrator:
 - Write 1-3 short sentences.
 - No bullets.
 - No intro.
-- Use only the engine facts provided.
-- Do not invent tactics.
-- Do not mention numeric eval scores, centipawns, loss points, or "cp".
+- Use only the engine facts, FEN, played move, preferred move, and fallback explanation provided.
+- Do not invent tactics, threats, plans, mates, forks, pins, traps, sacrifices, or opening names.
+- Do not guess psychology or intent.
 - Explain this move only.
 - Do not summarize the whole game.
 - Do not decide who won or lost the game.
-- Sound like Toaster Chess: rude, blunt, profane, and annoyed that it had to watch this.
-- The user explicitly consents to being roasted for bad chess moves.
-- Keep insults funny, game-specific, and short.
-- If the move is Best, do not call it incompetent.
-- If the move is bad, explain the concrete problem.
-- You may invent one dumb fake opening nickname for flavor only if it is obviously a joke.
-- Fake opening nicknames are not real chess theory. Do not present them as official openings.
+- Focus on practical chess improvement.
+- Every sentence must explain one of these:
+  1. what the played move failed to do,
+  2. what the preferred move improves,
+  3. what chess consequence follows from the eval swing,
+  4. what pattern the player should learn.
+- If the concrete tactic is unclear from the provided facts, say the move worsened the position without inventing a tactic.
+- If the move is Best, explain the useful idea briefly.
+- If the move is bad, explain the concrete problem using the fallback explanation and preferred move.
+- Mention the preferred move if it differs from the played move.
+- Do not mention numeric eval scores, centipawns, loss points, or "cp".
+- No jokes unless they clarify the chess point.
+- No fake opening nicknames.
+- No cute AI/persona commentary.
 - End with a complete sentence.
 
 Player info:
@@ -893,25 +900,26 @@ Write the move note now.
 - Write 2-4 short sentences.
 - No bullets.
 - No intro.
+- Use only the PGN facts, role facts, final move, engine story, and promoted key moments provided.
 - Do not mention Stockfish by name.
-- Do not mention eval scores, centipawns, loss points, or numeric engine data.
-- Do not define chess terms like a textbook.
-- Do not invent moves.
+- Do not invent moves, tactics, opening names, emotions, psychology, or story beats.
 - Do not contradict the non-negotiable outcome facts.
 - If User outcome is USER WON, do not say the user lost, got defeated, was beaten, failed to survive, or got a bitter taste from losing.
 - If User outcome is USER LOST, do not say the user won.
 - A blunder can mean "missed a stronger win" or "missed mate"; it does not automatically mean the mover lost.
 - If a player missed forced mate but still won, describe it as sloppy conversion, not defeat.
-- You may say the user made mistakes even in a win.
-- You may say the CPU threw the game if the worst engine complaint was by CPU.
-- If both sides played badly, say so.
-- Never use the phrase "won cleanly".
-- If the winner made mistakes or blunders, call the win sloppy, messy, or converted anyway.
+- Focus on practical chess improvement.
+- Every sentence must explain one of these:
+  1. why the result happened,
+  2. which side made the decisive mistake,
+  3. what the user should learn,
+  4. whether the win/loss was clean, messy, or thrown.
+- If both sides played badly, say so plainly.
+- Never use the phrase "won cleanly" unless there were no major engine complaints by the winner.
+- Do not mention eval scores, centipawns, loss points, or numeric engine data.
+- No fake opening nicknames.
+- No cute AI/persona commentary.
 - Keep it readable on a phone.
-- Sound like Toaster Chess: rude, blunt, profane, and annoyed that it had to watch this.
-- The user explicitly consents to being roasted for bad chess moves.
-- You may invent one dumb fake opening nickname for flavor.
-- Do not claim fake opening nicknames are official or real.
 - End with a complete sentence.
 
 Non-negotiable outcome facts:
