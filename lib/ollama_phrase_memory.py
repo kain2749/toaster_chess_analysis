@@ -901,9 +901,9 @@ Write the move note now.
 - No bullets.
 - No intro.
 - Use only the PGN facts, role facts, final move, engine story, and promoted key moments provided.
-- Do not mention Stockfish by name.
+- If the opening is known from PGN headers, ECO data, or the provided move sequence, name it.
+- If you are not sure of the opening, do not guess; say the opening is unclear or omit it.
 - Do not invent moves, tactics, opening names, emotions, psychology, or story beats.
-- If you know the openings that were used, name them.
 - Do not contradict the non-negotiable outcome facts.
 - If User outcome is USER WON, do not say the user lost, got defeated, was beaten, failed to survive, or got a bitter taste from losing.
 - If User outcome is USER LOST, do not say the user won.
