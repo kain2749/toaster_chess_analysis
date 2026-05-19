@@ -544,6 +544,8 @@ class ToasterOllamaNarrator:
         self.debug_dir = debug_dir
         self.force_llm_regen = force_llm_regen
         self.max_notes = max_notes if max_notes is not None else int(os.getenv("TOASTER_OLLAMA_MAX_NOTES", "9999"))
+        self.llm = LLMConfig()
+        self.openai = OpenAIConfig()
 
     def stop_model(self) -> None:
         if not self.ollama.enabled:
