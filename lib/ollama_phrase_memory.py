@@ -586,7 +586,7 @@ class ToasterOllamaNarrator:
                 self.memory.remember_ollama_call(
                     game_id=game_id,
                     kind=kind,
-                    model=self._active_model_name(),,
+                    model=self._active_model_name(),
                     prompt_text=prompt,
                     response_text=response,
                     error_text=error,
@@ -622,7 +622,7 @@ class ToasterOllamaNarrator:
             )
             print(f"DEBUG Ollama I/O: {combined_path}")
 
-    def _call_ollama(self, *, game_id: str, kind: str, prompt: str) -> str:
+    def _call_ollama_local(self, *, game_id: str, kind: str, prompt: str) -> str:
         if not self.ollama.enabled:
             return ""
 
