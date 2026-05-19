@@ -1,0 +1,3 @@
+python-chess
+mysql-connector-python
+openai
