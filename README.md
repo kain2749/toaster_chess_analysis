@@ -2,7 +2,7 @@ README is out of date, I've added in some functionality where you can use OpenAI
 
 ![Toaster Chess Analysis, no AI was made in the production of this repo](docs/images/likely_made_by_chatgpt.png)
 
-# Toaster Chess Analysis
+# Toaster Chess Analysis - My chess games do not have CI/CD, but they do have a deeply unnecessary local data pipeline.
 
 PGN ingestion, Stockfish analysis, Ollama commentary, MariaDB-backed prompt telemetry, and GitHub-published Markdown reports for games exported from my crappy [Android chess app](https://play.google.com/store/apps/details?id=uk.co.aifactory.chessfree&hl=en_US).
 
