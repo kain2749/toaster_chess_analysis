@@ -119,7 +119,7 @@ def main() -> None:
 
     imported = import_pgns(args.inbox, move=not args.copy)
 
-    rebuild_cmd = ["python", str(REBUILD_SCRIPT)]
+    rebuild_cmd = [sys.executable, str(REBUILD_SCRIPT)]
     if args.force:
         rebuild_cmd.append("--force")
     run(rebuild_cmd)
