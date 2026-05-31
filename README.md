@@ -1,16 +1,14 @@
-README is out of date, I've added in some functionality where you can use OpenAI/ChatGPT as an option using environment variables. The code in here will function as is, but I need to update this README. Thanks for READing ME.
-
 ![Toaster Chess Analysis, no AI was made in the production of this repo](docs/images/likely_made_by_chatgpt.png)
 
 # Toaster Chess Analysis - My chess games do not have CI/CD, but they do have a deeply unnecessary local data pipeline.
 
-PGN ingestion, Stockfish analysis, Ollama commentary, MariaDB-backed prompt telemetry, and GitHub-published Markdown reports for games exported from my crappy [Android chess app](https://play.google.com/store/apps/details?id=uk.co.aifactory.chessfree&hl=en_US).
+PGN ingestion, Stockfish analysis, Ollama or OpenAI/ChatGPT commentary, MariaDB-backed prompt telemetry, and GitHub-published Markdown reports for games exported from my crappy [Android chess app](https://play.google.com/store/apps/details?id=uk.co.aifactory.chessfree&hl=en_US).
 
 This repo exists because I wanted my phone chess games to get roasted automatically.
 
 It has now become infrastructure. Obviously. Because apparently exporting a chess game from a phone required a local LLM, Stockfish, MariaDB, systemd, KDE Connect, GitHub, and a GNOME status line that tattles on VRAM.
 
-MariaDB's password in this project is password. This is not best security practice. Do not do as I have done. There shouldn't be any spots where this says /usr/bin/python3, I think I caught all of them and changed them to be /usr/bin/python. This is a reminder to sudo apt install or whatever your package manager of choice is, [python-is-python3](https://packages.debian.org/sid/python-is-python3). If I can move off of 2.7.10, you can too. I believe in you.
+MariaDB's password in this project is password. This is not best security practice. Do not do as I have done. The checked-in scripts use `#!/usr/bin/env python3`; the local systemd service shown below uses `/usr/bin/python3` explicitly so it does not depend on shell aliases.
 
 ## What This Does
 
@@ -20,8 +18,8 @@ MariaDB's password in this project is password. This is not best security practi
 - The poller imports new PGNs into this repo.
 - Stockfish analyzes the game.
 - Python selects key moments and renders SVG chessboards.
-- Ollama writes short rude game stories and move notes.
-- MariaDB records Ollama prompts, responses, summaries, move-note memory, and phrase cooldowns.
+- Ollama or OpenAI writes short rude game stories and move notes.
+- MariaDB records LLM prompts, responses, summaries, move-note memory, and phrase cooldowns.
 - Python generates Markdown reports with chessboard diagrams.
 - Git commits and pushes the reports.
 - I read the pretty GitHub Markdown on my phone.
@@ -32,8 +30,8 @@ MariaDB's password in this project is password. This is not best security practi
 - PGN gets sent to desktop.
 - Desktop toaster eats PGN.
 - Stockfish says who screwed up.
-- Ollama says it in human-ish trash language.
-- MariaDB remembers what Ollama said and what it was fed.
+- The configured LLM says it in human-ish trash language.
+- MariaDB remembers what the LLM said and what it was fed.
 - GitHub gets the report.
 - I laugh or learn. Possibly both.
 
@@ -41,7 +39,7 @@ MariaDB's password in this project is password. This is not best security practi
 
 Stockfish and the PGN are the truth.
 
-Ollama is commentary. It is allowed to be rude, dumb, vulgar, and occasionally wrong about vibes.
+The LLM commentary is allowed to be rude, dumb, vulgar, and occasionally wrong about vibes.
 
 It is **not** allowed to be wrong about who won the damn game.
 
@@ -50,9 +48,9 @@ The important contract:
 - PGN result decides winner/loser.
 - Side mapping decides whether the user won or lost.
 - Stockfish decides move quality.
-- Ollama only narrates around those facts.
+- The configured LLM only narrates around those facts.
 
-If Ollama contradicts the PGN result, Ollama is wrong.
+If the prose contradicts the PGN result, the prose is wrong.
 
 ## Repo Layout
 
@@ -68,7 +66,7 @@ If Ollama contradicts the PGN result, Ollama is wrong.
 - `scripts/rebuild_pretty_analysis.py`
   - Thin manual rebuild entrypoint.
   - Should stay boring.
-  - Calls into `lib/analysis.py` and the Ollama narrator.
+  - Calls into `lib/analysis.py` and the configured LLM narrator.
 
 - `scripts/poll_pgns_push_analysis.py`
   - Workflow script.
@@ -86,9 +84,9 @@ If Ollama contradicts the PGN result, Ollama is wrong.
   - Does **not** know MariaDB exists.
 
 - `lib/ollama_phrase_memory.py`
-  - Ollama + MariaDB boundary.
-  - Builds Ollama prompts.
-  - Calls Ollama.
+  - LLM + MariaDB boundary.
+  - Builds narration prompts.
+  - Calls local Ollama or OpenAI, depending on environment.
   - Logs prompt/response/error records.
   - Stores move-note memory.
   - Stores game summaries.
@@ -108,6 +106,23 @@ Disable Ollama for a deterministic rebuild:
 ```bash
 TOASTER_USE_OLLAMA=0 python scripts/rebuild_pretty_analysis.py --force
 ```
+
+Use OpenAI/ChatGPT for narration:
+
+```bash
+export OPENAI_API_KEY='sk-...'
+export TOASTER_LLM_PROVIDER=openai
+export TOASTER_USE_LLM=1
+export TOASTER_OPENAI_MODEL=gpt-5.5
+python scripts/rebuild_pretty_analysis.py --force
+```
+
+Important distinction:
+
+- `TOASTER_LLM_PROVIDER=openai` routes narration to OpenAI.
+- `TOASTER_LLM_PROVIDER=ollama` routes narration to local Ollama.
+- `TOASTER_USE_OLLAMA=0` disables the narrator at the rebuild entrypoint for a deterministic no-LLM rebuild.
+- Do not commit `OPENAI_API_KEY`; keep it in your shell or a local-only env file.
 
 Enable Ollama debug files:
 
@@ -151,10 +166,66 @@ Description=Poll KDE Connect PGNs and rebuild toaster chess analysis
 
 [Service]
 Type=oneshot
-WorkingDirectory=%h/repos/toaster_chess_analysis
-Environment=TOASTER_OLLAMA_MODEL=dolphin-mistral
+WorkingDirectory=/home/kain/repos/toaster_chess_analysis
 Environment=TOASTER_MYSQL_PASSWORD=password
-ExecStart=/usr/bin/python ~/repos/toaster_chess_analysis/scripts/poll_pgns_push_analysis.py
+ExecStart=/usr/bin/python3 /home/kain/repos/toaster_chess_analysis/scripts/poll_pgns_push_analysis.py
+```
+
+Current intended timer shape:
+
+```ini
+[Unit]
+Description=Run toaster chess PGN poller every 2 minutes
+
+[Timer]
+OnActiveSec=2min
+OnUnitActiveSec=2min
+AccuracySec=30s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+`OnActiveSec` matters. An older version used `OnBootSec`; if the user systemd manager restarted after boot, the timer could sit at `Trigger: n/a` and never fire again.
+
+For OpenAI/ChatGPT narration under systemd, keep the secret outside the repo:
+
+```bash
+mkdir -p ~/.config/toaster-chess-analysis
+chmod 700 ~/.config/toaster-chess-analysis
+$EDITOR ~/.config/toaster-chess-analysis/openai.env
+chmod 600 ~/.config/toaster-chess-analysis/openai.env
+```
+
+Example `~/.config/toaster-chess-analysis/openai.env`:
+
+```env
+OPENAI_API_KEY=sk-...
+TOASTER_LLM_PROVIDER=openai
+TOASTER_USE_LLM=1
+TOASTER_OPENAI_MODEL=gpt-5.5
+TOASTER_OPENAI_REASONING_EFFORT=low
+TOASTER_OPENAI_MAX_OUTPUT_TOKENS=320
+TOASTER_MYSQL_PASSWORD=password
+```
+
+Then add a user-service override:
+
+```bash
+systemctl --user edit toaster-chess-poll.service
+```
+
+```ini
+[Service]
+EnvironmentFile=%h/.config/toaster-chess-analysis/openai.env
+```
+
+Apply changes:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart toaster-chess-poll.timer
 ```
 
 If the service fails, look at the logs first:
@@ -163,14 +234,14 @@ If the service fails, look at the logs first:
 journalctl --user -u toaster-chess-poll.service -n 120 --no-pager -l
 ```
 
-## MariaDB / Ollama Memory
+## MariaDB / LLM Memory
 
-This project uses MariaDB as local runtime memory for Ollama.
+This project uses MariaDB as local runtime memory for LLM narration.
 
 MariaDB is not the source of chess truth. It is used for:
 
-- recording what prompts were sent to Ollama
-- recording what Ollama responded with
+- recording what prompts were sent to the configured LLM
+- recording what the configured LLM responded with
 - storing generated game summaries
 - storing generated move notes
 - avoiding repeated move-note wording within a game
@@ -204,7 +275,7 @@ mariadb -u toaster -p toaster_chess_ollama
 
 Forensic black-box recorder.
 
-Stores every Ollama interaction:
+Stores every narration interaction. The table name is historical; rows may come from Ollama or OpenAI.
 
 - game id
 - call kind
@@ -213,7 +284,7 @@ Stores every Ollama interaction:
 - model name
 - full prompt text
 - full response text
-- error text if Ollama failed
+- error text if narration failed
 - timestamp
 
 Useful inspection:
@@ -371,7 +442,7 @@ The code will recreate the tables.
 
 ## Ollama / VRAM Behavior
 
-This project uses local Ollama for the rude Toaster Chess commentary.
+When `TOASTER_LLM_PROVIDER=ollama`, this project uses local Ollama for the rude Toaster Chess commentary.
 
 Ollama runs as a local service, but the model should not sit in VRAM forever. The analysis script loads the model when needed, generates the move notes / game story, then unloads it afterward.
 
@@ -496,7 +567,7 @@ This is unstable and should stay contained.
 - MariaDB memory
 - prompt/response logging
 - phrase cooldowns
-- Ollama request behavior
+- Ollama/OpenAI request behavior
 
 This belongs in `lib/ollama_phrase_memory.py`.
 
